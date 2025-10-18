@@ -1,0 +1,59 @@
+program                 = <function_definition>                         # Just to keep things simple, the program identifier only stores and defines one function (that would be our main function)
+function_definition     = <type> IDENTIFIER "(){" <statement>+ "}"      # `IDENTIFIER` here is a terminal
+type                    = "int"                                         # just int for now
+statement               = "return" <expr>
+expr                    = <constant>
+constant                = ? numbers, floats, integers ?             ## Anything that's a value determined at compile time without parsing or evaluation
+
+
+/** Notes
+Return is a type of statement
+**/
+
+# C code
+
+int main () {
+    return 0;
+}
+
+# Target
+
+Program (
+    declarations = [
+        Function(
+            type = "int"
+            name = "main"
+            body = [
+                Return(0)
+            ]
+        )
+    ]
+)
+
+# Grammar
+
+program                 :: <declaration>*                               :: Program( declarations = [ <declaration>* ] )
+declaration             :: <function_declaration>                       :: // container class for detecting type of declaration //
+function_declaration    :: <type> IDENTIFIER "(void){" <statement>* "}" :: Function ( type = <type>, name = IDENTIFIER, body = [ <statement>* ] )
+type                    :: "void" | "int" | "char"
+statement               :: <return>                                     :: // container class for detecting type of statement //
+return                  :: "return " CONSTANT ";"                       :: Return ( value = CONSTANT )
+
+# Converter
+
+Function(type, name, body: [statement])    -> {
+    .global <name>
+    <name>:
+}
+
+Return(value)                               -> {
+    mov r0, <value>
+    ret
+}
+
+# Assembly target
+
+.global main
+main:
+    mov r0, 0
+    ret
