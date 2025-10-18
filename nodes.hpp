@@ -4,12 +4,51 @@
 #include <variant>
 #include <vector>
 
+#include "exceptions.hpp"
 #include "targets/interface.hpp"
 #include "token.hpp"
 
 class Visitor;
 
 /** AST nodes definitions ***/
+struct DataType {
+    enum Type {
+        INT, CHAR, VOID,
+    } type;
+
+    int size() {
+        switch (type) {
+            case INT:
+                return 4;
+            case CHAR:
+                return 1;
+
+            default:
+                throw syntax_error("Unexpected error occured");
+                break;
+        }
+
+    }
+
+    DataType(Token::Type tokenType) {
+        switch (tokenType) {
+            case Token::INT:
+                type = INT;
+                break;
+            case Token::CHAR:
+                type = CHAR;
+                break;
+            case Token::VOID:
+                type = VOID;
+                break;
+
+            default:
+                throw syntax_error("Unexpected error occured");
+                break;
+        }
+    }
+};
+
 struct Return
 {
     Token value;
@@ -20,13 +59,30 @@ struct Return
     }
 };
 
+struct VariableDecl
+{
+    DataType type;
+    Token value;
+    std::string name;
+
+    VariableDecl(DataType type, Token value, std::string name)
+    : type(type), value(value), name(name) {}
+
+    void accept(Visitor &visitor) {
+        visitor.visit(*this);
+    }
+};
+
 struct Statement
 {
-    enum Type { RETURN } type;
-    std::variant<Return> obj;
+    enum Type { RETURN, VARIABLE_DECL } type;
+    std::variant<Return, VariableDecl> obj;
 
     Statement (Return rtn)
     : obj(rtn), type(RETURN) {}
+
+    Statement (VariableDecl vb)
+    : obj(vb), type(VARIABLE_DECL) {}
 
     void accept(Visitor &visitor) {
         visitor.visit(*this);
@@ -35,11 +91,11 @@ struct Statement
 
 struct Function
 {
-    Token::Type type;
+    DataType type;
     std::string name;
     std::vector<Statement> statements;
 
-    Function (Token::Type t, std::string n, std::vector<Statement> stmts)
+    Function (DataType t, std::string n, std::vector<Statement> stmts)
     : name(n), statements(stmts), type(t) {}
 
     void accept(Visitor& visitor) {
@@ -49,10 +105,14 @@ struct Function
 
 struct Declaration
 {
-    enum Type { FUNCTION } type;
-    std::variant<Function> obj;
+    enum Type { FUNCTION, VARIABLE } type;
+    std::variant<Function, VariableDecl> obj;
 
-    Declaration(Function f) : obj(f), type(FUNCTION) {}
+    Declaration(Function f)
+    : obj(f), type(FUNCTION) {}
+
+    Declaration(VariableDecl vb)
+    : obj(vb), type(FUNCTION) {}
     
     void accept(Visitor& visitor) {
         visitor.visit(*this);

@@ -1,0 +1,37 @@
+# C with variables
+
+int main () {
+    int digit = 0;
+    return digit;
+}
+
+# Target
+
+Program (
+    declarations = [
+        Function(                               # Statement type
+            type = "int"
+            name = "main"
+            body = [
+                VariableDecl(                   # Statement type
+                    type    = "int",
+                    name    = "digit",
+                    value   = "0"
+                ),
+                Return(                         # Statement type
+                    Var("digit")                    # Expression type
+                )
+            ]
+        )
+    ]
+)
+
+# Grammar
+
+program                 :: <declaration>*                               :: Program( declarations = [ <declaration>* ] )
+declaration             :: <function_declaration>                       :: // container class for detecting type of declaration //
+function_declaration    :: <type> IDENTIFIER "(void){" <statement>* "}" :: Function ( type = <type>, name = IDENTIFIER, body = [ <statement>* ] )
+type                    :: "void" | "int" | "char"
+statement               :: <return> | <variable_decl>                   :: // container class for detecting type of statement //
+return                  :: "return " (CONSTANT | IDENTIFIER) ";"        :: Return ( value = CONSTANT )
+variable_decl           :: <type> IDENTIFIER "=" CONSTANT ";"           :: VariableDecl ( type = <type>, name = IDENTIFIER, value = CONSTANT )

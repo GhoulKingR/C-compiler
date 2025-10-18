@@ -8,12 +8,16 @@ struct Token
     {
         IDENTIFIER, CONSTANT, END,
 
+        // types
+        INT, VOID, CHAR,
+
         // keywords
-        INT, VOID, RETURN,
+        RETURN,
 
         // symbols
         OPEN_PARENTHESIS, CLOSE_PARENTHESIS,
-        OPEN_BRACE, CLOSE_BRACE, SEMICOLON
+        OPEN_BRACE, CLOSE_BRACE, SEMICOLON,
+        EQUAL
     } type;
     std::string value;
     int line;

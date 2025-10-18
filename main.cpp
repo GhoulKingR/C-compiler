@@ -88,6 +88,10 @@ void lexer(std::vector<Token>& tokens, std::string& content)
                 tokens.push_back(Token(Token::SEMICOLON, "{", line));
                 current++;
                 break;
+            case '=':
+                tokens.push_back(Token(Token::EQUAL, "=", line));
+                current++;
+                break;
 
             // skips
             case '\n':
@@ -108,6 +112,12 @@ void lexer(std::vector<Token>& tokens, std::string& content)
                 // constants
                 else if (isdigit(content[current]))
                     current = seek_constant(current, content, tokens, line);
+                else {
+                    std::stringstream ss;
+                    ss  << "Syntax error on line " << line
+                        << ", unexpected character '" << content[current] << "'";
+                    throw syntax_error(ss.str());
+                }
                 break;
         }
     }
@@ -122,6 +132,7 @@ int seek_identifier(int start, std::string& content, std::vector<Token>& tokens,
     keywords["int"] = Token::INT;
     keywords["return"] = Token::RETURN;
     keywords["void"] = Token::VOID;
+    keywords["char"] = Token::CHAR;
 
     // seek to the end of the identifier/keyword
     int end = start;

@@ -44,31 +44,61 @@ private:
 
         while (!check(Token::END))
         {
-            expect(Token::INT);     // only int for now
+            DataType type = parseDataType();
 
             Token identifier = accept(Token::IDENTIFIER);
 
-            // (void){
-            expect(Token::OPEN_PARENTHESIS);
-            expect(Token::VOID);
-            expect(Token::CLOSE_PARENTHESIS);
-            expect(Token::OPEN_BRACE);
+            if (check(Token::OPEN_PARENTHESIS)) {
+                // function declaration
+                // (void){
+                expect(Token::OPEN_PARENTHESIS);
+                expect(Token::VOID);
+                expect(Token::CLOSE_PARENTHESIS);
+                expect(Token::OPEN_BRACE);
 
-            std::vector<Statement> stmts = parseStatements();
+                std::vector<Statement> stmts = parseStatements();
 
-            // }
-            expect(Token::CLOSE_BRACE);
+                // }
+                expect(Token::CLOSE_BRACE);
 
-            declarations.push_back(
-                Declaration(Function(
-                    Token::INT, identifier.value, stmts)));
+                declarations.push_back(
+                    Declaration(Function(
+                        type, identifier.value, stmts)));
+            } else if (check(Token::EQUAL)) {
+                // variable declaration
+                expect(Token::EQUAL);
+                Token constant = accept(Token::CONSTANT);
+                expect(Token::SEMICOLON);
+
+                declarations.push_back(
+                    Declaration(VariableDecl(
+                            type, constant, identifier.value)));
+            }
         }
 
         return declarations;
     }
 
     /****
-     *  <statement>     ::= "return" <exp> ";"
+     * parse the current token for the data type
+     * type :: "void" | "int" | "char"
+     */
+    DataType parseDataType()
+    {
+        if (check(Token::INT) || check(Token::VOID) || check(Token::CHAR)) {
+            DataType result(tokens[progress].type);
+            progress++;
+            return result;
+        }
+
+        std::stringstream ss;
+        ss  << "Unexpected token '" << tokens[progress].value
+            << "' on line " << tokens[progress].line;
+        throw syntax_error(ss.str());
+    }
+
+    /****
+     * statement :: <return> | <variable_decl>
      */
     std::vector<Statement> parseStatements()
     {
@@ -76,20 +106,31 @@ private:
 
         while (tokens[progress].type != Token::CLOSE_BRACE)
         {
-            switch (tokens[progress].type) {
-                case Token::RETURN:
-                    progress++;
-                    statements.push_back(
-                            Statement(Return(accept(Token::CONSTANT))));
-                    expect(Token::SEMICOLON);
-                    break;
+            /* return :: "return " (CONSTANT | IDENTIFIER) ";" */
+            if (check(Token::RETURN)) {
+                progress++;
 
-                default:
-                    std::stringstream ss;
-                    ss  << "Unexpected token '" << tokens[progress].value
-                        << "' on line " << tokens[progress].line;
-                    throw syntax_error(ss.str());
-                    break;
+                if (check(Token::CONSTANT))
+                    statements.push_back(
+                        Statement(Return(accept(Token::CONSTANT))));
+                else 
+                    statements.push_back(
+                        Statement(Return(accept(Token::IDENTIFIER))));
+
+                expect(Token::SEMICOLON);
+
+            /* variable_decl :: <type> IDENTIFIER "=" CONSTANT ";" */
+            } else {
+                DataType type = parseDataType();        // throws error if it couldn't recognize a type
+
+                Token identifier = accept(Token::IDENTIFIER);
+                expect(Token::EQUAL);
+                Token constant = accept(Token::CONSTANT);
+                expect(Token::SEMICOLON);
+
+                statements.push_back(
+                    Statement(VariableDecl(
+                        type, constant, identifier.value)));
             }
         }
 

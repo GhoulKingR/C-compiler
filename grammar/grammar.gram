@@ -5,11 +5,6 @@ statement               = "return" <expr>
 expr                    = <constant>
 constant                = ? numbers, floats, integers ?             ## Anything that's a value determined at compile time without parsing or evaluation
 
-
-/** Notes
-Return is a type of statement
-**/
-
 # C code
 
 int main () {
@@ -53,7 +48,12 @@ Return(value)                               -> {
 
 # Assembly target
 
-.global main
-main:
-    mov r0, 0
+.globl _main                ;; Start of main function
+.p2align 2
+_main:
+    .cfi_startproc
+    mov w0, 0               ;; return 0;
     ret
+    .cfi_endproc            ;; End of main function
+
+
