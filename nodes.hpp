@@ -49,16 +49,33 @@ struct DataType {
     }
 };
 
+// TODO: Implement this
+struct Expr
+{
+    enum Type {
+        CONSTANT
+    } type;
+    std::variant<std::string> obj;
+};
+
+/** return <expr>; */
 struct Return
 {
     Token value;
     Return (Token t) : value(t) {}
+
+    /**
+     * Replace with:
+    Expr value;
+    Return (Expr v) : value(t) {}
+     */
 
     void accept(Visitor &visitor) {
         visitor.visit(*this);
     }
 };
 
+/** <datatype> variable_name = <expr> */
 struct VariableDecl
 {
     DataType type;
@@ -67,6 +84,13 @@ struct VariableDecl
 
     VariableDecl(DataType type, Token value, std::string name)
     : type(type), value(value), name(name) {}
+
+    /**
+     * Replace with:
+    Expr value;
+    VariableDecl(DataType type, Expr value, std::string name)
+    : type(type), value(value), name(name) {}
+     */
 
     void accept(Visitor &visitor) {
         visitor.visit(*this);

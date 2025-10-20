@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <sstream>
+#include <stack>
 #include <string>
 
 class ArmTarget
@@ -18,7 +19,8 @@ class ArmTarget
         : size(size), name(name), value(value) {}
     };
     // global scope for now
-    std::deque<Var> variables;      // push front and pop back to make stack calculations easier
+    // std::deque<Var> variables;      // push front and pop back to make stack calculations easier
+    std::stack<std::deque<Var>> scope;
 
 public:
 
@@ -61,10 +63,14 @@ public:
             << "_" << f.name << ":\n"
             << "    .cfi_startproc\n";
 
+        std::deque<Var> variables;
+        scope.push(variables);
+
         for (Statement st : f.statements) {
             st.accept(*this);
         }
         
+        scope.pop();
         ss  << "    .cfi_endproc\n";
     }
 
@@ -78,8 +84,7 @@ public:
         // add variable to `variables` for now
         // I say for now because with this, all variables
         // declared are in the global scope
-        // So TODO: Design a scope mechanism for managing scopes
-        variables.push_front(
+        scope.top().push_front(
             Var(vd.type.size() * 2, vd.name, vd.value.value));
         
         ss  << "    sub sp, sp, #" << vd.type.size() * 2 << '\n'    // each address stores a word (4-bits)
@@ -120,7 +125,7 @@ public:
             ss  << "    mov x0, #" << r.value.value << '\n';
         else if (r.value.type == Token::IDENTIFIER) {
             int i = 0;  // stack position
-            for (Var v : variables ) {
+            for (Var v : scope.top() ) {
                 if (v.name == r.value.value)
                     break;
 
@@ -131,7 +136,7 @@ public:
 
         // restore all stack allocated variables
         int offset = 0;
-        for (Var v : variables) {
+        for (Var v : scope.top()) {
             ss  << "    add sp, sp, #" << offset + v.size << '\n';
             offset += v.size;
         }
