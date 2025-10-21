@@ -25,7 +25,7 @@ int main(int argc, char** argv)
     }
     const char* c_file = argv[argc - 1];
 #else
-    const char* c_file = argc < 2 ? "../main.c" : argv[argc - 1];
+    const char* c_file = argc < 2 ? "./sample/main.c" : argv[argc - 1];
 #endif
 
     // read c file
@@ -44,12 +44,11 @@ int main(int argc, char** argv)
     Program program = parser.parse();
 
     // convert program to assembly
-    ArmTarget converter;
-    program.accept(converter);
+    ArmTarget compiler;
     
     // write assembly to file
-    std::ofstream output("../output.s");
-    output << converter.result();
+    std::ofstream output("./sample/output.s");
+    output << compiler.compile(program);
     output.close();
 
     return 0;

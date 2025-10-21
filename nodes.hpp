@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "exceptions.hpp"
-#include "targets/interface.hpp"
 #include "token.hpp"
 
 class Visitor;
@@ -53,48 +52,47 @@ struct DataType {
 struct Expr
 {
     enum Type {
-        CONSTANT
+        CONSTANT, IDENTIFIER,
     } type;
-    std::variant<std::string> obj;
+    std::variant<std::string> value;
+
+    Expr(Token t) : value(t.value) {
+        switch (t.type) {
+            case Token::CONSTANT:
+                type = CONSTANT;
+                break;
+            case Token::IDENTIFIER:
+                type = IDENTIFIER;
+                break;
+
+            default:
+                // error handling
+                break;
+        }
+    }
+
+    template<typename T>
+    T& getData() {
+        return std::get<T>(value);
+    }
 };
 
 /** return <expr>; */
 struct Return
 {
-    Token value;
-    Return (Token t) : value(t) {}
-
-    /**
-     * Replace with:
     Expr value;
-    Return (Expr v) : value(t) {}
-     */
-
-    void accept(Visitor &visitor) {
-        visitor.visit(*this);
-    }
+    Return (Expr v) : value(v) {}
 };
 
 /** <datatype> variable_name = <expr> */
 struct VariableDecl
 {
     DataType type;
-    Token value;
+    Expr value;
     std::string name;
 
-    VariableDecl(DataType type, Token value, std::string name)
-    : type(type), value(value), name(name) {}
-
-    /**
-     * Replace with:
-    Expr value;
     VariableDecl(DataType type, Expr value, std::string name)
     : type(type), value(value), name(name) {}
-     */
-
-    void accept(Visitor &visitor) {
-        visitor.visit(*this);
-    }
 };
 
 struct Statement
@@ -107,10 +105,6 @@ struct Statement
 
     Statement (VariableDecl vb)
     : obj(vb), type(VARIABLE_DECL) {}
-
-    void accept(Visitor &visitor) {
-        visitor.visit(*this);
-    }
 };
 
 struct Function
@@ -121,10 +115,6 @@ struct Function
 
     Function (DataType t, std::string n, std::vector<Statement> stmts)
     : name(n), statements(stmts), type(t) {}
-
-    void accept(Visitor& visitor) {
-        visitor.visit(*this);
-    }
 };
 
 struct Declaration
@@ -137,20 +127,12 @@ struct Declaration
 
     Declaration(VariableDecl vb)
     : obj(vb), type(FUNCTION) {}
-    
-    void accept(Visitor& visitor) {
-        visitor.visit(*this);
-    }
 };
 
 struct Program
 {
     std::vector<Declaration> declarations;
     Program (std::vector<Declaration> d) : declarations(d) {}
-
-    void accept(Visitor& visitor) {
-       visitor.visit(*this);
-    }
 };
 
 // <identifier> : IDENTIFIER

@@ -1,111 +1,119 @@
-#include "interface.hpp"
-
 #include <deque>
 #include <sstream>
 #include <stack>
 #include <string>
 
 class ArmTarget
-: public Visitor
 {
     std::stringstream ss;
+    int stack_size = 0;
 
     struct Var {
         int size;
         std::string name;
-        std::string value;
 
-        Var (int size, std::string &name, std::string &value)
-        : size(size), name(name), value(value) {}
+        Var (int size, std::string &name)
+        : size(size), name(name) {}
     };
+
     // global scope for now
-    // std::deque<Var> variables;      // push front and pop back to make stack calculations easier
-    std::stack<std::deque<Var>> scope;
+    std::deque<Var> variables;
 
 public:
-
-    /***
-     * program.accept()
-     * 
-     * convert program object to arm assembly
-     ***/
-    void visit(Program &p) override
-    {
+    std::string compile(Program &p) {
         for (Declaration& d : p.declarations) {
-            d.accept(*this);
+            compile(d);
             ss << '\n';
         }
+
+        return ss.str();
     }
 
-    /***
-     * declaration.accept()
-     *
-     * convert declaration to assembly
-     ***/
-    void visit(Declaration &d) override
+private:
+    void compile(Declaration &d)
     {
         if (d.type == Declaration::FUNCTION) {
-            std::get<Function>(d.obj).accept(*this);
+            compile(std::get<Function>(d.obj));
         } else if (d.type == Declaration::VARIABLE) {
-            std::get<VariableDecl>(d.obj).accept(*this);
+            compile(std::get<VariableDecl>(d.obj));
         }
     }
 
-    /***
-     * function.accept()
-     *
-     * convert function declaration to assembly
-     ***/
-    void visit(Function &f) override
+    void compile(Function &f)
     {
         ss  << ".globl _" << f.name << '\n'
             << ".p2align 2\n"
             << "_" << f.name << ":\n"
             << "    .cfi_startproc\n";
 
-        std::deque<Var> variables;
-        scope.push(variables);
+        // calculate the amount of stack memory used and
+        // pre-allocate that. Make sure the stack is 4-byte aligned (8 nibbles)
+
+        stack_size = 0;
+        
+        for (Statement st: f.statements) {
+            if (st.type == Statement::VARIABLE_DECL) {
+                VariableDecl& vd = std::get<VariableDecl>(st.obj);
+                size_t size = vd.type.size() * 2;
+
+                variables.push_front(
+                    Var(size, vd.name));
+                stack_size += size;
+            }
+        }
+
+        stack_size = stack_size - (stack_size % 8) + 8;
+        ss  << "    sub sp, sp, #" << stack_size << '\n'
+            << "    mov x12, sp\n";
 
         for (Statement st : f.statements) {
-            st.accept(*this);
+            compile(st);
         }
         
-        scope.pop();
+        stack_size = 0;
+        variables.clear();
         ss  << "    .cfi_endproc\n";
     }
 
-    /***
-     * variabledecl.accept()
-     *
-     * convert variable declaration to assembly
-     ***/
-    void visit(VariableDecl &vd) override
+    void compile(VariableDecl &vd)
     {
         // add variable to `variables` for now
         // I say for now because with this, all variables
         // declared are in the global scope
-        scope.top().push_front(
-            Var(vd.type.size() * 2, vd.name, vd.value.value));
-        
-        ss  << "    sub sp, sp, #" << vd.type.size() * 2 << '\n'    // each address stores a word (4-bits)
-            << "    mov w0, #" << vd.value.value << '\n'
-            << "    str w0, [sp]\n";
+        const int size = vd.type.size();
+
+        ss << "    mov w0, #" << vd.value.getData<std::string>() << '\n';
+
+        // find stack position of variable and store in `i`
+        int i = 0;
+        for (Var v : variables ) {
+            if (v.name == vd.name) {
+                switch (v.size)
+                {
+                case 2:     // char
+                    ss  << "    strb w0, [x12, #" << i << "]\n";
+                    break;
+                
+                default:
+                    ss  << "    str w0, [x12, #" << i << "]\n";
+                    break;
+                }
+                break;
+            }
+
+            i += v.size;
+        }
     }
 
-    /***
-     * statement.accept()
-     *
-     * convert statements to assembly
-     ***/
-    void visit(Statement &s) override
+    void compile(Statement &s)
     {
         switch (s.type) {
             case Statement::RETURN:
-                std::get<Return>(s.obj).accept(*this);
+                compile(std::get<Return>(s.obj));
                 ss << '\n';
                 break;
             case Statement::VARIABLE_DECL:
-                std::get<VariableDecl>(s.obj).accept(*this);
+                compile(std::get<VariableDecl>(s.obj));
                 break;
 
             default:
@@ -113,39 +121,34 @@ public:
         }
     }
 
-    /***
-     * return.accept();
-     *
-     * convert return statement to assembly
-     ***/
-    void visit(Return &r) override
+    void compile(Return &r)
     {
         // return value
-        if (r.value.type == Token::CONSTANT)
-            ss  << "    mov x0, #" << r.value.value << '\n';
-        else if (r.value.type == Token::IDENTIFIER) {
-            int i = 0;  // stack position
-            for (Var v : scope.top() ) {
-                if (v.name == r.value.value)
+        if (r.value.type == Expr::CONSTANT)
+            ss  << "    mov x0, #" << r.value.getData<std::string>() << '\n';
+        else if (r.value.type == Expr::IDENTIFIER) {
+            int i = 0;
+            for (Var v : variables ) {
+                if (v.name == r.value.getData<std::string>()) {
+                    switch (v.size)
+                    {
+                        case DataType::CHAR:
+                            ss  << "    ldrb w0, [x12, #" << i << "]\n";
+                            break;
+                        
+                        default:
+                            ss  << "    ldr w0, [x12, #" << i << "]\n";
+                            break;
+                    }
                     break;
+                }
 
                 i += v.size;
             }
-            ss  << "    ldr w0, [sp, #" << i << "]\n";
         }
 
         // restore all stack allocated variables
-        int offset = 0;
-        for (Var v : scope.top()) {
-            ss  << "    add sp, sp, #" << offset + v.size << '\n';
-            offset += v.size;
-        }
-
-        ss  << "    ret";
-    }
-
-    std::string result()
-    {
-        return ss.str();
+        ss  << "    add sp, sp, #" << stack_size << '\n'
+            << "    ret";
     }
 };
