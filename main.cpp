@@ -91,6 +91,19 @@ void lexer(std::vector<Token>& tokens, std::string& content)
                 tokens.push_back(Token(Token::EQUAL, "=", line));
                 current++;
                 break;
+            case '\'':
+                current++;
+                tokens.push_back(Token(
+                    Token::CONSTANT, std::to_string((int) content[current]), line));
+                    
+                if (content[++current] == '\'') {
+                    current++;
+                } else {
+                    std::stringstream ss;
+                    ss  << "Syntax error on line " << line
+                        << ", unexpected character \"" << content[current] << "\"";
+                }
+                break;
 
             // skips
             case '\n':

@@ -56,8 +56,7 @@ private:
                 VariableDecl& vd = std::get<VariableDecl>(st.obj);
                 size_t size = vd.type.size() * 2;
 
-                variables.push_front(
-                    Var(size, vd.name));
+                variables.push_front(Var(size, vd.name));
                 stack_size += size;
             }
         }

@@ -6,7 +6,7 @@ _main:
     mov x12, sp
     mov w0, #2
     str w0, [x12, #2]
-    mov w0, #3
+    mov w0, #97
     strb w0, [x12, #0]
     ldr w0, [x12, #2]
     add sp, sp, #16
