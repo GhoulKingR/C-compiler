@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "parser.hpp"
+#include "parser.h"
 // #include "targets/arm.hpp"
 #include "token.h"
 #include "exceptions.hpp"
@@ -31,6 +31,8 @@ int main(int argc, char** argv)
     const char* c_file = argc < 2 ? "./sample/main.c" : argv[argc - 1];
 #endif
 
+    int exit_signal = EXIT_SUCCESS;
+
     // read c file
     std::ifstream f(c_file);
     std::stringstream buffer;
@@ -43,7 +45,11 @@ int main(int argc, char** argv)
     lexer(tokens, content);
 
     // parse the tokens
-    struct program p = parse(tokens);
+    struct program *p = parse(tokens);
+    if (p == NULL) {
+        exit_signal = EXIT_FAILURE;
+        goto lexer_cleanup;
+    }
 
     // // convert program to assembly
     // ArmTarget compiler;
@@ -53,6 +59,9 @@ int main(int argc, char** argv)
     // output << compiler.compile(program);
     // output.close();
 
+    parser_cleanup(p);
+
+lexer_cleanup:
     for (int i = 0; i < tokens->_size; i++) {
         struct token t = ((struct token*) tokens->_data)[i];
         if (t.allocated) {
@@ -61,7 +70,7 @@ int main(int argc, char** argv)
     }
     vector_free(tokens);
 
-    return 0;
+    return exit_signal;
 }
 
 int seek_identifier(int start, std::string& content, struct m_vector* tokens, int line);

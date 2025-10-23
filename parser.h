@@ -25,20 +25,26 @@ bool check(enum token_type expected, struct global_vars *vars) {
  * parse the current token for the data type
  * type :: "void" | "int" | "char"
  */
-struct datatype parseDataType(struct global_vars *vars)
+struct datatype *parseDataType(struct global_vars *vars)
 {
+    struct datatype *result = (struct datatype*) malloc(sizeof(struct datatype));
+
     if (check(TOKEN_INT, vars) || check(TOKEN_VOID, vars) || check(TOKEN_CHAR, vars)) {
         enum datatype_type type = token_to_datatype(
             token_at(vars->tokens, vars->progress).type);
+        if (type == DATATYPE_ERR) goto syntax_error;
 
         vars->progress++;
-        return (struct datatype) { .type = type };
+        result->type = type;
+        return result;
     }
 
+syntax_error:
     fprintf(stderr, "Syntax error on line %d, unexpected '%s'\n",
         token_at(vars->tokens, vars->progress).line,
         token_at(vars->tokens, vars->progress).value);
-    exit(EXIT_FAILURE);
+    free(result);
+    return NULL;
 }
 
 /****
@@ -89,7 +95,8 @@ struct m_vector *parseStatements(struct global_vars *vars) /* Statement */
         } else {
 
             // get variable declaration data type
-            struct datatype type = parseDataType(vars);
+            struct datatype *type = parseDataType(vars);
+            if (type == NULL) goto cleanup;
 
             // get variable declaration identifier (variable name)
             struct token identifier;
@@ -117,7 +124,7 @@ struct m_vector *parseStatements(struct global_vars *vars) /* Statement */
                 .obj = {
                     .var = {
                         .name = identifier.value,
-                        .type = type,
+                        .type = *type,
                         .value = {
                             .type = EXPR_CONSTANT,
                             .value = constant.value,
@@ -125,6 +132,8 @@ struct m_vector *parseStatements(struct global_vars *vars) /* Statement */
                     }
                 }
             });
+
+            free(type);
         }
     }
 
@@ -134,7 +143,11 @@ syntax_error:
     fprintf(stderr, "Syntax error on line %d, unexpected '%s'\n",
         token_at(vars->tokens, vars->progress).line,
         token_at(vars->tokens, vars->progress).value);
-    exit(EXIT_FAILURE);
+    // cleanup statements vector
+
+cleanup:
+    vector_free(statements);
+    return NULL;
 }
 
 /****
@@ -144,13 +157,13 @@ syntax_error:
  */
 struct m_vector *parseDeclarations(struct global_vars *vars)
 {
-    struct m_vector *declarations /* Declaration */;
-    declarations = vector_init(sizeof(struct declaration));
+    struct m_vector *declarations = vector_init(sizeof(struct declaration));
 
     while (!check(TOKEN_EOF, vars))
     {
         // get datatype of the declaration
-        struct datatype type = parseDataType(vars);
+        struct datatype *type = parseDataType(vars);
+        if (type == NULL) goto cleanup;
 
         // get declaration name/identifier
         struct token identifier;
@@ -171,6 +184,7 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
 
             // parse all statements inside the function
             struct m_vector *stmts = parseStatements(vars);
+            if (stmts == NULL) goto cleanup;
 
             // }
             if (check(TOKEN_CLOSE_BRACE, vars)) vars->progress++;
@@ -181,11 +195,13 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
                 .obj = {
                     .func = {
                         .name = identifier.value,
-                        .type = type,
+                        .type = *type,
                         .statements = stmts,
                     }
                 }
             });
+            
+            free(type);
         } else if (check(TOKEN_EQUAL, vars)) {
             // variable declaration
             vars->progress++;
@@ -205,7 +221,7 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
                 .type = DECLARATION_VARIABLE,
                 .obj = {
                     .var = {
-                        .type = type,
+                        .type = *type,
                         .value = {
                             .value = constant.value,
                             .type = EXPR_CONSTANT,
@@ -214,6 +230,8 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
                     }
                 }
             });
+
+            free(type);
         } else goto syntax_error;
     }
 
@@ -223,19 +241,52 @@ syntax_error:
     fprintf(stderr, "Syntax error on line %d, unexpected '%s'\n",
         token_at(vars->tokens, vars->progress).line,
         token_at(vars->tokens, vars->progress).value);
-    exit(EXIT_FAILURE);
+
+cleanup:
+    vector_free(declarations);
+    return NULL;
 }
 
 /****
  *  program ::  <declaration>*  :: Program( declarations = [ <declaration>* ] )
  */
-struct program parse(struct m_vector /* struct token */*tokens) {
+struct program *parse(struct m_vector /* struct token */*tokens) {
     struct global_vars vars = {
         .tokens = tokens,
         .progress = 0,
     };
+    struct m_vector *decls = parseDeclarations(&vars);
 
-    return (struct program) {
-        .declarations = parseDeclarations(&vars),
-    };
+    if (decls == NULL) {
+        return NULL;
+    } else {
+        struct program *result = (struct program*) malloc(sizeof(struct program));
+        result->declarations = decls;
+        return result;
+    }
+}
+
+/** cleanup functions (only vectors are cleaned up here) */
+void cleanup_declaration(struct declaration d) {
+    switch (d.type)
+    {
+    case DECLARATION_FUNCTION:
+        vector_free(d.obj.func.statements);
+        break;
+    
+    default:
+        break;
+    }
+}
+
+// cleanup the parser data
+void parser_cleanup(struct program *p) {
+    // iterate over declarations
+    for (int i = 0; i < p->declarations->_size; i++) {
+        cleanup_declaration(
+            ((struct declaration*) p->declarations->_data)[i]
+        );
+    }
+    vector_free(p->declarations);
+    free(p);
 }
