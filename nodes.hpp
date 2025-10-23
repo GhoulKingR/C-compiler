@@ -5,134 +5,142 @@
 #include <vector>
 
 #include "exceptions.hpp"
-#include "token.hpp"
+#include "token.h"
 
 class Visitor;
 
 /** AST nodes definitions ***/
-struct DataType {
-    enum Type {
-        INT, CHAR, VOID,
-    } type;
-
-    int size() {
-        switch (type) {
-            case INT:
-                return 4;
-            case CHAR:
-                return 1;
-
-            default:
-                throw syntax_error("Unexpected error occured");
-                break;
-        }
-
-    }
-
-    DataType(Token::Type tokenType) {
-        switch (tokenType) {
-            case Token::INT:
-                type = INT;
-                break;
-            case Token::CHAR:
-                type = CHAR;
-                break;
-            case Token::VOID:
-                type = VOID;
-                break;
-
-            default:
-                throw syntax_error("Unexpected error occured");
-                break;
-        }
-    }
+enum datatype_type {
+    DATATYPE_INT,
+    DATATYPE_CHAR,
+    DATATYPE_VOID,
+    DATATYPE_ERR,
 };
 
+struct datatype {
+    enum datatype_type type;
+
+    // int size() {
+    //     switch (type) {
+    //         case INT:
+    //             return 4;
+    //         case CHAR:
+    //             return 1;
+
+    //         default:
+    //             throw syntax_error("Unexpected error occured");
+    //             break;
+    //     }
+
+    // }
+};
+
+enum datatype_type token_to_datatype(enum token_type tokenType) {
+    switch (tokenType) {
+        case TOKEN_INT:
+            return DATATYPE_INT;
+        case TOKEN_CHAR:
+            return DATATYPE_CHAR;
+        case TOKEN_VOID:
+            return DATATYPE_VOID;
+
+        default:        // unexpected error
+            return DATATYPE_ERR;
+    }
+}
+
 // TODO: Implement this
+enum expr_type {
+    EXPR_CONSTANT,
+    EXPR_IDENTIFIER,
+    
+    EXPR_ERR,
+};
+
 struct Expr
 {
-    enum Type {
-        CONSTANT, IDENTIFIER,
-    } type;
-    std::variant<std::string> value;
-
-    Expr(Token t) : value(t.value) {
-        switch (t.type) {
-            case Token::CONSTANT:
-                type = CONSTANT;
-                break;
-            case Token::IDENTIFIER:
-                type = IDENTIFIER;
-                break;
-
-            default:
-                // error handling
-                break;
-        }
-    }
-
-    template<typename T>
-    T& getData() {
-        return std::get<T>(value);
-    }
+    enum expr_type type;
+    const char* value;
 };
 
 /** return <expr>; */
 struct Return
 {
     Expr value;
-    Return (Expr v) : value(v) {}
 };
 
 /** <datatype> variable_name = <expr> */
-struct VariableDecl
+struct variable_decl
 {
-    DataType type;
+    struct datatype type;
     Expr value;
-    std::string name;
-
-    VariableDecl(DataType type, Expr value, std::string name)
-    : type(type), value(value), name(name) {}
+    const char* name;
 };
 
-struct Statement
-{
-    enum Type { RETURN, VARIABLE_DECL } type;
-    std::variant<Return, VariableDecl> obj;
-
-    Statement (Return rtn)
-    : obj(rtn), type(RETURN) {}
-
-    Statement (VariableDecl vb)
-    : obj(vb), type(VARIABLE_DECL) {}
+/* statement start */
+enum statement_type {
+    STATEMENT_RETURN,
+    STATEMENT_VARIABLE_DECL
 };
 
-struct Function
+struct statement
 {
-    DataType type;
-    std::string name;
-    std::vector<Statement> statements;
+    enum statement_type type;
+    union {
+        struct Return ret;
+        struct variable_decl var;
+    } obj;
 
-    Function (DataType t, std::string n, std::vector<Statement> stmts)
-    : name(n), statements(stmts), type(t) {}
+    // Statement (Return rtn)
+    // : obj(rtn), type(RETURN) {}
+
+    // Statement (VariableDecl vb)
+    // : obj(vb), type(VARIABLE_DECL) {}
 };
 
-struct Declaration
+void statement_insert(struct m_vector* vec, struct statement data) {
+    if (vec->_size + 1 >= vec->_capacity)
+        vector_resize(vec, vec->_capacity + 100);
+
+    ((struct statement*) vec->_data)[vec->_size] = data;
+    vec->_size++;
+}
+/* statement end */
+
+struct function
 {
-    enum Type { FUNCTION, VARIABLE } type;
-    std::variant<Function, VariableDecl> obj;
-
-    Declaration(Function f)
-    : obj(f), type(FUNCTION) {}
-
-    Declaration(VariableDecl vb)
-    : obj(vb), type(FUNCTION) {}
+    struct datatype type;
+    const char* name;
+    struct m_vector *statements /* Statement */;
 };
 
-struct Program
+/* declarations start */
+enum declaration_type {
+    DECLARATION_FUNCTION,
+    DECLARATION_VARIABLE
+};
+
+struct declaration
 {
-    std::vector<Declaration> declarations;
-    Program (std::vector<Declaration> d) : declarations(d) {}
+    enum declaration_type type;
+    union {
+        struct function func;
+        struct variable_decl var;
+    } obj;
+};
+
+void declaration_insert(struct m_vector* vec, struct declaration data) {
+    if (vec->_size + 1 >= vec->_capacity)
+        vector_resize(vec, vec->_capacity + 100);
+
+    ((struct declaration*) vec->_data)[vec->_size] = data;
+    vec->_size++;
+}
+/* declarations end */
+
+struct program
+{
+    struct m_vector *declarations;     // type: <Declaration>
 };
 
 // <identifier> : IDENTIFIER
