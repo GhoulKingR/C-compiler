@@ -39,3 +39,13 @@ void token_insert(struct m_vector* vec, struct token data) {
 struct token token_at(struct m_vector *vec, int pos) {
     return ((struct token*) vec->_data)[pos];
 }
+
+void token_cleanup(struct m_vector *tokens) {
+    for (int i = 0; i < tokens->_size; i++) {
+        struct token t = ((struct token*) tokens->_data)[i];
+        if (t.allocated) {
+            free(t.value);
+        }
+    }
+    vector_free(tokens);
+}

@@ -8,14 +8,13 @@
 #include <vector>
 
 #include "parser.h"
-// #include "targets/arm.hpp"
+#include "targets/arm.h"
 #include "token.h"
-#include "exceptions.hpp"
 #include "helpers.h"
 
 #define DEBUG
 
-void lexer(struct m_vector* tokens, std::string& content);
+struct m_vector *lexer(std::string& content);
 
 int main(int argc, char** argv)
 {
@@ -32,6 +31,7 @@ int main(int argc, char** argv)
 #endif
 
     int exit_signal = EXIT_SUCCESS;
+    const char* assembly;
 
     // read c file
     std::ifstream f(c_file);
@@ -41,8 +41,9 @@ int main(int argc, char** argv)
     f.close();
 
     // pass it to the lexer
-    struct m_vector* tokens = vector_init(sizeof(struct token));
-    lexer(tokens, content);
+    struct m_vector *tokens = lexer(content);
+    if (tokens == NULL)
+        return EXIT_FAILURE;
 
     // parse the tokens
     struct program *p = parse(tokens);
@@ -51,8 +52,9 @@ int main(int argc, char** argv)
         goto lexer_cleanup;
     }
 
-    // // convert program to assembly
-    // ArmTarget compiler;
+    // convert program to assembly
+    assembly = arm_compile(p);
+    free((void*) assembly);
     
     // // write assembly to file
     // std::ofstream output("./sample/output.s");
@@ -62,22 +64,16 @@ int main(int argc, char** argv)
     parser_cleanup(p);
 
 lexer_cleanup:
-    for (int i = 0; i < tokens->_size; i++) {
-        struct token t = ((struct token*) tokens->_data)[i];
-        if (t.allocated) {
-            free(t.value);
-        }
-    }
-    vector_free(tokens);
-
+    token_cleanup(tokens);
     return exit_signal;
 }
 
 int seek_identifier(int start, std::string& content, struct m_vector* tokens, int line);
 int seek_constant(int start, std::string& content, struct m_vector* tokens, int line);
 
-void lexer(struct m_vector* tokens, std::string& content)
+struct m_vector *lexer(std::string& content)
 {
+    struct m_vector *tokens = vector_init(sizeof(struct token));
     int current = 0;
     int line = 1;
 
@@ -177,12 +173,7 @@ void lexer(struct m_vector* tokens, std::string& content)
                 // constants
                 else if (isdigit(content[current]))
                     current = seek_constant(current, content, tokens, line);
-                else {
-                    std::stringstream ss;
-                    ss  << "Syntax error on line " << line
-                        << ", unexpected character '" << content[current] << "'";
-                    throw syntax_error(ss.str());
-                }
+                else goto syntax_error;
                 break;
         }
     }
@@ -192,6 +183,17 @@ void lexer(struct m_vector* tokens, std::string& content)
         .value = "EOF",
         .line = line
     });
+
+    return tokens;
+    
+syntax_error:
+    fprintf(stderr,
+        "Syntax error on line %d, unexpected character '%c'\n",
+        line, content[current]
+    );
+
+    token_cleanup(tokens);
+    return NULL;
 }
 
 int seek_identifier(int start, std::string& content, struct m_vector* tokens, int line)

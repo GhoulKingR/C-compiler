@@ -1,10 +1,4 @@
 #pragma once
-
-#include <string>
-#include <variant>
-#include <vector>
-
-#include "exceptions.hpp"
 #include "token.h"
 
 class Visitor;
@@ -19,21 +13,19 @@ enum datatype_type {
 
 struct datatype {
     enum datatype_type type;
-
-    // int size() {
-    //     switch (type) {
-    //         case INT:
-    //             return 4;
-    //         case CHAR:
-    //             return 1;
-
-    //         default:
-    //             throw syntax_error("Unexpected error occured");
-    //             break;
-    //     }
-
-    // }
 };
+
+int datatype_size (struct datatype type) {
+    switch (type.type) {
+        case DATATYPE_INT:
+            return 4;
+        case DATATYPE_CHAR:
+            return 1;
+
+        default:
+            return 0;   // error value
+    }
+}
 
 enum datatype_type token_to_datatype(enum token_type tokenType) {
     switch (tokenType) {
@@ -49,12 +41,12 @@ enum datatype_type token_to_datatype(enum token_type tokenType) {
     }
 }
 
-// TODO: Implement this
 enum expr_type {
     EXPR_CONSTANT,
     EXPR_IDENTIFIER,
-    
-    EXPR_ERR,
+
+    // operations
+    // EXPR_UNARY_OPERATION,
 };
 
 struct Expr
@@ -73,7 +65,7 @@ struct Return
 struct variable_decl
 {
     struct datatype type;
-    Expr value;
+    struct Expr value;
     const char* name;
 };
 
@@ -105,6 +97,10 @@ void statement_insert(struct m_vector* vec, struct statement data) {
     ((struct statement*) vec->_data)[vec->_size] = data;
     vec->_size++;
 }
+
+struct statement statement_at(struct m_vector *vec, int pos) {
+    return ((struct statement*) vec->_data)[pos];
+}
 /* statement end */
 
 struct function
@@ -135,6 +131,10 @@ void declaration_insert(struct m_vector* vec, struct declaration data) {
 
     ((struct declaration*) vec->_data)[vec->_size] = data;
     vec->_size++;
+}
+
+struct declaration declaration_at(struct m_vector *vec, int pos) {
+    return ((struct declaration*) vec->_data)[pos];
 }
 /* declarations end */
 
