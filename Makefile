@@ -16,7 +16,7 @@ debug:
 	lldb $(PROJECT_NAME) -- ./sample/main.c
 
 leaks:
-	$(CXX) $(CXXFLAGS) $(SOURCE_FILES) -o $(PROJECT_NAME)
+	$(CXX) $(CXXFLAGS) $(SOURCE_FILES) -g -o $(PROJECT_NAME)
 	leaks --atExit -- ./$(PROJECT_NAME) ./sample/main.c
 
 BUILD_FILES = comp comp.dSYM main main.dSYM
