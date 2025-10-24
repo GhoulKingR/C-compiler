@@ -1,22 +1,22 @@
-SOURCE_FILES = main.cpp
+SOURCE_FILES = main.c
 PROJECT_NAME = comp
 
-CXX = g++
-CXXFLAGS = -std=c++17
+CC = gcc
+CCFLAGS = -o $(PROJECT_NAME) $(SOURCE_FILES)
 
 build:
-	$(CXX) $(CXXFLAGS) $(SOURCE_FILES) -o $(PROJECT_NAME)
+	$(CC) $(CCFLAGS) 
 
 run:
-	$(CXX) $(CXXFLAGS) $(SOURCE_FILES) -fsanitize=address,undefined -o $(PROJECT_NAME)
+	$(CC) $(CCFLAGS) -fsanitize=address,undefined -g
 	./$(PROJECT_NAME) ./sample/main.c
 
 debug:
-	$(CXX) $(CXXFLAGS) $(SOURCE_FILES) -g -o $(PROJECT_NAME)
+	$(CC) $(CCFLAGS) -g
 	lldb $(PROJECT_NAME) -- ./sample/main.c
 
 leaks:
-	$(CXX) $(CXXFLAGS) $(SOURCE_FILES) -g -o $(PROJECT_NAME)
+	$(CC) $(CCFLAGS) -g
 	leaks --atExit -- ./$(PROJECT_NAME) ./sample/main.c
 
 BUILD_FILES = comp comp.dSYM main main.dSYM

@@ -20,26 +20,17 @@ bool check(enum token_type expected, struct global_vars *vars) {
  * parse the current token for the data type
  * type :: "void" | "int" | "char"
  */
-struct datatype *parseDataType(struct global_vars *vars)
+enum datatype parseDataType(struct global_vars *vars)
 {
-    struct datatype *result = (struct datatype*) malloc(sizeof(struct datatype));
-
     if (check(TOKEN_INT, vars) || check(TOKEN_VOID, vars) || check(TOKEN_CHAR, vars)) {
-        enum datatype_type type = token_to_datatype(
+        enum datatype type = token_to_datatype(
             token_at(vars->tokens, vars->progress).type);
-        if (type == DATATYPE_ERR) goto syntax_error;
-
         vars->progress++;
-        result->type = type;
-        return result;
+
+        return type;
     }
 
-syntax_error:
-    fprintf(stderr, "Syntax error on line %d, unexpected '%s'\n",
-        token_at(vars->tokens, vars->progress).line,
-        token_at(vars->tokens, vars->progress).value);
-    free(result);
-    return NULL;
+    return DATATYPE_ERR;
 }
 
 /****
@@ -90,8 +81,8 @@ struct m_vector *parseStatements(struct global_vars *vars) /* Statement */
         } else {
 
             // get variable declaration data type
-            struct datatype *type = parseDataType(vars);
-            if (type == NULL) goto cleanup;
+            enum datatype type = parseDataType(vars);
+            if (type == DATATYPE_ERR) goto cleanup;
 
             // get variable declaration identifier (variable name)
             struct token identifier;
@@ -119,7 +110,7 @@ struct m_vector *parseStatements(struct global_vars *vars) /* Statement */
                 .obj = {
                     .var = {
                         .name = identifier.value,
-                        .type = *type,
+                        .type = type,
                         .value = {
                             .type = EXPR_CONSTANT,
                             .value = constant.value,
@@ -127,8 +118,6 @@ struct m_vector *parseStatements(struct global_vars *vars) /* Statement */
                     }
                 }
             });
-
-            free(type);
         }
     }
 
@@ -157,8 +146,8 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
     while (!check(TOKEN_EOF, vars))
     {
         // get datatype of the declaration
-        struct datatype *type = parseDataType(vars);
-        if (type == NULL) goto cleanup;
+        enum datatype type = parseDataType(vars);
+        if (type == DATATYPE_ERR) goto cleanup;
 
         // get declaration name/identifier
         struct token identifier;
@@ -190,13 +179,11 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
                 .obj = {
                     .func = {
                         .name = identifier.value,
-                        .type = *type,
+                        .type = type,
                         .statements = stmts,
                     }
                 }
             });
-            
-            free(type);
         } else if (check(TOKEN_EQUAL, vars)) {
             // variable declaration
             vars->progress++;
@@ -216,7 +203,7 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
                 .type = DECLARATION_VARIABLE,
                 .obj = {
                     .var = {
-                        .type = *type,
+                        .type = type,
                         .value = {
                             .value = constant.value,
                             .type = EXPR_CONSTANT,
@@ -226,7 +213,6 @@ struct m_vector *parseDeclarations(struct global_vars *vars)
                 }
             });
 
-            free(type);
         } else goto syntax_error;
     }
 

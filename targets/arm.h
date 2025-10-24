@@ -64,13 +64,13 @@ char* itoa(int num) {
     return result;
 }
 
-void arm_compile_variabledecl(struct arm_program_global_var *var, struct variable_decl *vd) {
+bool arm_compile_variabledecl(struct arm_program_global_var *var, struct variable_decl *vd) {
     // add variable to `variables` for now
     // I say for now because with this, all variables
     // declared are in the global scope
     const int size = datatype_size(vd->type);
 
-    arm_program_append(var, "   mov w0, #", 12);
+    arm_program_append(var, "    mov w0, #", 13);
     arm_program_append(var, vd->value.value, strlen(vd->value.value));
     arm_program_append(var, "\n", 1);
 
@@ -78,7 +78,7 @@ void arm_compile_variabledecl(struct arm_program_global_var *var, struct variabl
     int j = 0;
     for (int i = 0; i < var->_variables->_size; i++) {
         struct var v = var_at(var->_variables, i);
-        if (v.name == vd->name) {
+        if (strcmp(v.name, vd->name) == 0) {
             char* pos_str = itoa(j);
             switch (v.size) {
                 case 2:     // char
@@ -94,9 +94,13 @@ void arm_compile_variabledecl(struct arm_program_global_var *var, struct variabl
                     break;
             }
             free(pos_str);
-            break;
+            return true;
         }
+        j += v.size;
     }
+
+    fprintf(stderr, "Variable %s not defined\n", vd->name);
+    return false;
 }
 
 bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
@@ -114,7 +118,7 @@ bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
         int j = 0;
         for (int i = 0; i < vars->_variables->_size; i++) {
             struct var v = var_at(vars->_variables, i);
-            if (v.name == r.value.value) {
+            if (strcmp(v.name, r.value.value) == 0) {
                 char* pos_str = itoa(j);
                 switch (v.size)
                 {
@@ -125,7 +129,7 @@ bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
                         break;
                     
                     default:
-                        arm_program_append(vars, "    ldrb w0, [x12, #", 19);
+                        arm_program_append(vars, "    ldr w0, [x12, #", 19);
                         arm_program_append(vars, pos_str, strlen(pos_str));
                         arm_program_append(vars, "]\n", 2);
                         break;
@@ -136,7 +140,10 @@ bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
 
             j += v.size;
         }
-    } else return false;
+    } else {
+        fprintf(stderr, "Unsupported expression type %s\n", r.value.value);
+        return false;
+    }
 
     // restore all stack allocated variables
     /**
@@ -147,7 +154,7 @@ bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
     const char* stack_size_str = itoa(vars->stack_size);
     arm_program_append(vars, "    add sp, sp, #", 17);
     arm_program_append(vars, stack_size_str, strlen(stack_size_str));
-    arm_program_append(vars, "\nret\n", 5);
+    arm_program_append(vars, "\n    ret\n", 9);
     free((void*) stack_size_str);
     return true;
 }
@@ -158,10 +165,10 @@ bool arm_compile_statements(struct arm_program_global_var *vars, struct statemen
         case STATEMENT_RETURN:
             return arm_compile_return(vars, s.obj.ret);
         case STATEMENT_VARIABLE_DECL:
-            arm_compile_variabledecl(vars, &s.obj.var);
-            return true;
+            return arm_compile_variabledecl(vars, &s.obj.var);
 
         default:
+            fprintf(stderr, "[INTERNAL] Unsupported statement type\n");
             return false;
     }
 }
@@ -176,7 +183,7 @@ bool arm_compile_functiondecl(struct arm_program_global_var *vars, struct functi
      */
     arm_program_append(vars, ".globl _", 8);
     arm_program_append(vars, f->name, strlen(f->name));
-    arm_program_append(vars, "\n.p2align 2\n_", 12);
+    arm_program_append(vars, "\n.p2align 2\n_", 13);
     arm_program_append(vars, f->name, strlen(f->name));
     arm_program_append(vars, ":\n    .cfi_startproc\n", 21);
 
@@ -205,7 +212,7 @@ bool arm_compile_functiondecl(struct arm_program_global_var *vars, struct functi
      */
     vars->stack_size = vars->stack_size - (vars->stack_size % 8) + 8;
     const char* stack_size_str = itoa(vars->stack_size);
-    arm_program_append(vars, "    sub sp, sp, #", 18);
+    arm_program_append(vars, "    sub sp, sp, #", 17);
     arm_program_append(vars, stack_size_str, strlen(stack_size_str));
     arm_program_append(vars, "\n    mov x12, sp\n", 17);
     free((void*) stack_size_str);
@@ -215,18 +222,17 @@ bool arm_compile_functiondecl(struct arm_program_global_var *vars, struct functi
             return false;
     }
     
-    vars->stack_size = 0;
-    vars->_size = 0;
     arm_program_append(vars, "    .cfi_endproc\n", 17);
     return true;
 }
 
-void arm_compile_declaration(struct arm_program_global_var *vars, struct declaration d) {
+bool arm_compile_declaration(struct arm_program_global_var *vars, struct declaration d) {
     if (d.type == DECLARATION_FUNCTION) {
-        arm_compile_functiondecl(vars, &d.obj.func);
+        return arm_compile_functiondecl(vars, &d.obj.func);
     } else if (d.type == DECLARATION_VARIABLE) {
-        arm_compile_variabledecl(vars, &d.obj.var);
+        return arm_compile_variabledecl(vars, &d.obj.var);
     }
+    return false;
 }
 
 const char* arm_compile(struct program *p) {
@@ -240,13 +246,19 @@ const char* arm_compile(struct program *p) {
     memset(var.memory, 0, 100);
 
     for (int i = 0; i < p->declarations->_size; i++) {
-        arm_compile_declaration (
-            &var,
-            declaration_at(p->declarations, i)
-        );
+        if (!arm_compile_declaration(
+            &var, declaration_at(p->declarations, i)))
+        goto error_cleanup;
         arm_program_append(&var, "\n", 1);
+        var.stack_size = 0;
+        var._size = 0;
     }
 
     vector_free(var._variables);
     return var.memory;
+    
+error_cleanup:
+    free(var.memory);
+    vector_free(var._variables);
+    return NULL;
 }

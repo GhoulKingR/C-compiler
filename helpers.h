@@ -15,6 +15,25 @@ char *int_to_str(int value) {
     return result;
 }
 
+char *str_sub(const char *root, int start, size_t size) {
+    char *result = (char*) malloc(size + 1);
+    memcpy(result, root + start, size);
+    result[size] = '\0';
+    return result;
+}
+
+bool is_digit(char c) {
+    return '0' <= c && c <= '9';
+}
+
+bool is_alpha(char c) {
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
+
+bool is_alnum(char c) {
+    return is_digit(c) || is_alpha(c);
+}
+
 /**
  * Copies a char array. Result is allocated so remember 
  * to free.

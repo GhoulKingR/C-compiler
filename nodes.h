@@ -1,22 +1,16 @@
 #pragma once
 #include "token.h"
 
-class Visitor;
-
 /** AST nodes definitions ***/
-enum datatype_type {
+enum datatype {
     DATATYPE_INT,
     DATATYPE_CHAR,
     DATATYPE_VOID,
     DATATYPE_ERR,
 };
 
-struct datatype {
-    enum datatype_type type;
-};
-
-int datatype_size (struct datatype type) {
-    switch (type.type) {
+int datatype_size (enum datatype type) {
+    switch (type) {
         case DATATYPE_INT:
             return 4;
         case DATATYPE_CHAR:
@@ -27,7 +21,7 @@ int datatype_size (struct datatype type) {
     }
 }
 
-enum datatype_type token_to_datatype(enum token_type tokenType) {
+enum datatype token_to_datatype(enum token_type tokenType) {
     switch (tokenType) {
         case TOKEN_INT:
             return DATATYPE_INT;
@@ -58,13 +52,13 @@ struct Expr
 /** return <expr>; */
 struct Return
 {
-    Expr value;
+    struct Expr value;
 };
 
 /** <datatype> variable_name = <expr> */
 struct variable_decl
 {
-    struct datatype type;
+    enum datatype type;
     struct Expr value;
     const char* name;
 };
@@ -105,7 +99,7 @@ struct statement statement_at(struct m_vector *vec, int pos) {
 
 struct function
 {
-    struct datatype type;
+    enum datatype type;
     const char* name;
     struct m_vector *statements /* Statement */;
 };
