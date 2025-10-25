@@ -5,10 +5,11 @@ _main:
     sub sp, sp, #16
     mov x12, sp
     mov w0, #2
+    neg w0, w0
     str w0, [x12, #0]
     mov w0, #97
-    strb w0, [x12, #8]
-    ldr w0, [x12, #0]
+    str w0, [x12, #8]
+    mov w0, [x12, #0]
     add sp, sp, #16
     ret
     .cfi_endproc

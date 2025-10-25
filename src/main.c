@@ -1,8 +1,13 @@
 #include "token.h"
 #include "nodes.h"
 #include "helpers.h"
-#include "parser.h"
-#include "target_arm.h"
+
+// from parser.c
+void parser_cleanup(struct program *p);
+struct program *parse(struct m_vector *tokens);
+
+// from target_arm.c
+const char* arm_compile(struct program *p);
 
 #define DEBUG
 
@@ -173,9 +178,46 @@ struct m_vector *lexer(const char *content)
                 current++;
                 break;
             case '/':
+                current++;
+                if (content[current] == '/') {
+                    current++;
+                    for (; content[current] != '\n' && content[current] != '\0'; current++);
+                } else if (content[current] == '*') {
+                    current++;
+                    int starting_line = line;
+
+                    while (true) {
+                        if (content[current] == '\0') {
+                            fprintf(stderr,
+                                "Unexpected EOF symbol, missing comment terminator '*/' for line %d\n",
+                                starting_line);
+                            goto cleanup;
+                        } else if (content[current] == '\n') {
+                            line++;
+                            current++;
+                        } else if (content[current] == '*') {
+                            current++;
+
+                            if (content[current] == '/') {
+                                current++;
+                                break;
+                            }
+                        } else current++;
+                    }
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_SLASH,
+                        .value = "/",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    break;
+                }
+                break;
+            case '~':
                 token_insert(tokens, (struct token) {
-                    .type = TOKEN_SLASH,
-                    .value = "/",
+                    .type = TOKEN_TILDA,
+                    .value = "~",
                     .line = line,
                     .allocated = false,
                 });
@@ -244,6 +286,7 @@ syntax_error:
         line, content[current]
     );
 
+cleanup:
     token_cleanup(tokens);
     return NULL;
 }

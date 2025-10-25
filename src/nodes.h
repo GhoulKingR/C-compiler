@@ -14,14 +14,17 @@ enum datatype token_to_datatype(enum token_type tokenType);
 enum expr_type {
     EXPR_CONSTANT,
     EXPR_IDENTIFIER,
-
-    // operations
-    // EXPR_UNARY_OPERATION,
 };
 
 struct Expr
 {
     enum expr_type type;
+
+    struct {
+        bool with_operation;
+        struct token tk;
+    } prefix;
+
     const char* value;
 };
 
@@ -35,7 +38,7 @@ struct Return
 struct variable_decl
 {
     enum datatype type;
-    struct Expr value;
+    struct Expr *value;
     const char* name;
 };
 
@@ -62,7 +65,7 @@ struct function
 {
     enum datatype type;
     const char* name;
-    struct m_vector *statements /* Statement */;
+    struct m_vector *statements; //: struct statement
 };
 
 /* declarations start */
@@ -86,7 +89,7 @@ struct declaration declaration_at(struct m_vector *vec, int pos);
 
 struct program
 {
-    struct m_vector *declarations;     // type: <Declaration>
+    struct m_vector *declarations;     //: struct declaration
 };
 
 // <identifier> : IDENTIFIER

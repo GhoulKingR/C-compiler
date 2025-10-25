@@ -1,4 +1,7 @@
-#include "target_arm.h"
+#include "helpers.h"
+#include "nodes.h"
+#include "token.h"
+#include <stdio.h>
 
 struct var {
     size_t size;
@@ -24,7 +27,6 @@ struct arm_program_global_var {
 
     int stack_size;
     struct m_vector *_variables;
-    // std::deque<Var> variables;
 };
 
 static void arm_program_checkandresize(struct arm_program_global_var *var, size_t size) {
@@ -64,86 +66,84 @@ static char* itoa(int num) {
     return result;
 }
 
-static bool arm_compile_variabledecl(struct arm_program_global_var *var, struct variable_decl *vd) {
-    // add variable to `variables` for now
-    // I say for now because with this, all variables
-    // declared are in the global scope
-    const int size = datatype_size(vd->type);
-
-    arm_program_append(var, "    mov w0, #", 13);
-    arm_program_append(var, vd->value.value, strlen(vd->value.value));
-    arm_program_append(var, "\n", 1);
-
-    // find stack position of variable and store in `j`
+static int get_stack_pos(struct arm_program_global_var *vars, const char *name) {
     int j = 0;
-    for (int i = 0; i < var->_variables->_size; i++) {
-        struct var v = var_at(var->_variables, i);
-        if (strcmp(v.name, vd->name) == 0) {
-            char* pos_str = itoa(j);
-            switch (v.size) {
-                case 2:     // char
-                    arm_program_append(var, "    strb w0, [x12, #", 20);
-                    arm_program_append(var, pos_str, strlen(pos_str));
-                    arm_program_append(var, "]\n", 2);
-                    break;
-                
-                default:
-                    arm_program_append(var, "    str w0, [x12, #", 19);
-                    arm_program_append(var, pos_str, strlen(pos_str));
-                    arm_program_append(var, "]\n", 2);
-                    break;
-            }
-            free(pos_str);
-            return true;
-        }
-        j += v.size;
+
+    for (int i = 0; i < vars->_variables->_size; i++) {
+        struct var v = var_at(vars->_variables, i);
+
+        if (strcmp(v.name, name) == 0) return j;
+        else j += v.size;
     }
 
-    fprintf(stderr, "Variable %s not defined\n", vd->name);
-    return false;
+    return -1;
+}
+
+/***
+ * compiles an expression and stores its results at w0/x0
+ **/
+static bool arm_compile_expression(struct arm_program_global_var *var, struct Expr* expr) {
+    // mov w0, #23
+    if (expr->type == EXPR_CONSTANT) {
+        arm_program_append(var, "    mov w0, #", 13);
+        arm_program_append(var, expr->value, strlen(expr->value));
+        arm_program_append(var, "\n", 1);
+    } else if (expr->type == EXPR_IDENTIFIER) {
+        arm_program_append(var, "    mov w0, [x12, #", 19);
+
+        int pos = get_stack_pos(var, expr->value);
+        if (pos == -1) {
+            fprintf(stderr, "Variable %s is not defined on line %d\n", expr->value, expr->prefix.tk.line);
+            return false;
+        }
+
+        char* pos_str = int_to_str(pos);
+        arm_program_append(var, pos_str, strlen(pos_str));
+        arm_program_append(var, "]\n", 2);
+        free(pos_str);
+    }
+
+    // prefix operations happen here
+    if (expr->prefix.with_operation) {
+        if (expr->prefix.tk.type == TOKEN_MINUS) {
+            // neg w0, w0
+            arm_program_append(var, "    neg w0, w0\n", 15);
+        } else if (expr->prefix.tk.type == TOKEN_TILDA) {
+            // mvn w0, w0
+            arm_program_append(var, "    mvn w0, w0\n", 15);
+        } else {
+            fprintf(stderr, "Unsupported unary operation '%s'\n", expr->prefix.tk.value);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool arm_compile_variabledecl(struct arm_program_global_var *var, struct variable_decl *vd) {
+    const int size = datatype_size(vd->type);
+
+    // compile expression here
+    if (!arm_compile_expression(var, vd->value))
+        return false;
+
+    arm_program_append(var, "    ", 4);
+    if (datatype_size(vd->type) == 2) arm_program_append(var, "strb", 4);
+    else arm_program_append(var, "str", 3);
+
+    // find stack position of variable && this can be trusted to never return -1
+    char* pos = int_to_str(get_stack_pos(var, vd->name));
+    arm_program_append(var, " w0, [x12, #", 12);
+    arm_program_append(var, pos, strlen(pos));
+    arm_program_append(var, "]\n", 2);
+    free(pos);
+
+    return true;
 }
 
 static bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
 {
-    // return value
-    if (r.value.type == EXPR_CONSTANT) {
-        /**
-         * with 12 as example constant:
-         *     mov x0, #12
-         */
-        arm_program_append(vars, "    mov x0, #", 13);
-        arm_program_append(vars, r.value.value, strlen(r.value.value));
-        arm_program_append(vars, "\n", 1);
-    } else if (r.value.type == EXPR_IDENTIFIER) {
-        int j = 0;
-        for (int i = 0; i < vars->_variables->_size; i++) {
-            struct var v = var_at(vars->_variables, i);
-            if (strcmp(v.name, r.value.value) == 0) {
-                char* pos_str = itoa(j);
-                switch (v.size)
-                {
-                    case DATATYPE_CHAR:
-                        arm_program_append(vars, "    ldrb w0, [x12, #", 20);
-                        arm_program_append(vars, pos_str, strlen(pos_str));
-                        arm_program_append(vars, "]\n", 2);
-                        break;
-                    
-                    default:
-                        arm_program_append(vars, "    ldr w0, [x12, #", 19);
-                        arm_program_append(vars, pos_str, strlen(pos_str));
-                        arm_program_append(vars, "]\n", 2);
-                        break;
-                }
-                free(pos_str);
-                break;
-            }
-
-            j += v.size;
-        }
-    } else {
-        fprintf(stderr, "Unsupported expression type %s\n", r.value.value);
-        return false;
-    }
+    arm_compile_expression(vars, &r.value);
 
     // restore all stack allocated variables
     /**

@@ -1,4 +1,10 @@
-SOURCE_FILES = main.c
+SOURCE_FILES = 						\
+				src/main.c 			\
+				src/parser.c  		\
+				src/target_arm.c	\
+				src/helpers.c		\
+				src/token.c			\
+				src/nodes.c
 PROJECT_NAME = comp
 
 CC = gcc

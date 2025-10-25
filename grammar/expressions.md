@@ -6,6 +6,20 @@ int main () {
     return num;
 }
 
+
+# grammar
+```
+expression     → equality ;
+equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           → factor ( ( "-" | "+" ) factor )* ;
+factor         → unary ( ( "/" | "*" ) unary )* ;
+unary          → ( "!" | "-" ) unary
+               | primary ;
+primary        → NUMBER | STRING | "true" | "false" | "nil"
+               | "(" expression ")" ;
+```
+
 # intermediate representation
 
 int main() {
@@ -74,3 +88,11 @@ variable_decl           :: <type> IDENTIFIER "=" CONSTANT ";"           :: Varia
 
 - Implement an expression type
 - For now only able to hold constants and then swap it in place of the current way return holds values
+
+# Unary
+
+unary   ->  ("-" | "!" | "~") primary
+primary -> char | num
+
+char -- 'a'
+num  -- 123
