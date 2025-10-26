@@ -1,5 +1,5 @@
 #include "helpers.h"
-#include "nodes.h"
+#include "parser/nodes.h"
 #include "token.h"
 #include <stdio.h>
 
@@ -86,14 +86,15 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
     // mov w0, #23
     if (expr->type == EXPR_CONSTANT) {
         arm_program_append(var, "    mov w0, #", 13);
-        arm_program_append(var, expr->value, strlen(expr->value));
+        arm_program_append(var, expr->obj.sin.value, strlen(expr->obj.sin.value));
         arm_program_append(var, "\n", 1);
     } else if (expr->type == EXPR_IDENTIFIER) {
         arm_program_append(var, "    ldr w0, [x12, #", 19);
 
-        int pos = get_stack_pos(var, expr->value);
+        int pos = get_stack_pos(var, expr->obj.sin.value);
         if (pos == -1) {
-            fprintf(stderr, "Variable %s is not defined on line %d\n", expr->value, expr->prefix.tk.line);
+            fprintf(stderr, "Variable %s is not defined on line %d\n",
+                    expr->obj.sin.value, expr->obj.sin.prefix.tk.line);
             return false;
         }
 
@@ -104,20 +105,20 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
     }
 
     // prefix operations happen here
-    if (expr->prefix.with_operation) {
-        if (expr->prefix.tk.type == TOKEN_MINUS) {
+    if (expr->obj.sin.prefix.with_operation) {
+        if (expr->obj.sin.prefix.tk.type == TOKEN_MINUS) {
             // neg w0, w0
             arm_program_append(var, "    neg w0, w0\n", 15);
-        } else if (expr->prefix.tk.type == TOKEN_TILDA) {
+        } else if (expr->obj.sin.prefix.tk.type == TOKEN_TILDA) {
             // mvn w0, w0
             arm_program_append(var, "    mvn w0, w0\n", 15);
-        } else if (expr->prefix.tk.type == TOKEN_BANG) {
+        } else if (expr->obj.sin.prefix.tk.type == TOKEN_BANG) {
             // cmp w0, #0
             // cset w0, eq
             arm_program_append(var, "    cmp w0, #0\n", 15);
             arm_program_append(var, "    cset w0, eq\n", 16);
         } else {
-            fprintf(stderr, "Unsupported unary operation '%s'\n", expr->prefix.tk.value);
+            fprintf(stderr, "Unsupported unary operation '%s'\n", expr->obj.sin.prefix.tk.value);
             return false;
         }
     }

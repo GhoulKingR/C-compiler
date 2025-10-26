@@ -1,14 +1,9 @@
-#include "nodes.h"
-#include "token.h"
-
-struct global_vars {
-    struct m_vector *tokens; /* struct token */
-    int progress;
-};
+#include "../token.h"
+#include "parser.h"
 
 // checkes whether the token at the current position matches 
 // the expected type
-static bool check(enum token_type expected, struct global_vars *vars) {
+bool check(enum token_type expected, struct global_vars *vars) {
     return (
         expected == token_at(vars->tokens, vars->progress).type
     );
@@ -29,40 +24,6 @@ static enum datatype parseDataType(struct global_vars *vars)
     }
 
     return DATATYPE_ERR;
-}
-
-
-struct Expr *parseExpression(struct global_vars *vars) {
-    struct Expr *result = malloc(sizeof(struct Expr));
-
-    if (check(TOKEN_MINUS, vars) || check(TOKEN_BANG, vars)  || check(TOKEN_TILDA, vars)) {
-        result->prefix.with_operation = true;
-        result->prefix.tk = token_at(vars->tokens, vars->progress);
-        vars->progress++;
-    } else {
-        result->prefix.with_operation = false;
-    }
-    
-    if (check(TOKEN_CONSTANT, vars)) {
-        struct token constant = token_at(vars->tokens, vars->progress);
-        result->type = EXPR_CONSTANT;
-        result->value = constant.value;
-        vars->progress++;
-    } else if (check(TOKEN_IDENTIFIER, vars)) {
-        struct token constant = token_at(vars->tokens, vars->progress);
-        result->type = EXPR_IDENTIFIER;
-        result->value = constant.value;
-        vars->progress++;
-    } else goto syntax_error;
-
-    return result;
-
-syntax_error:
-    fprintf(stderr, "Syntax error on line %d, unexpected '%s'\n",
-        token_at(vars->tokens, vars->progress).line,
-        token_at(vars->tokens, vars->progress).value);
-    free(result);
-    return NULL;
 }
 
 /****
@@ -193,11 +154,6 @@ static struct m_vector *parseDeclarations(struct global_vars *vars)
             vars->progress++;
 
             // get number after `=`
-            // struct token constant;
-            // if (check(TOKEN_CONSTANT, vars)) {
-            //     constant = token_at(vars->tokens, vars->progress);
-            //     vars->progress++;
-            // } else goto syntax_error;
             struct Expr *expr = parseExpression(vars);
 
             // check for semicolon

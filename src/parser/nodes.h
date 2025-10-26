@@ -1,5 +1,5 @@
 #pragma once
-#include "token.h"
+#include "../token.h"
 
 enum datatype {
     DATATYPE_INT,
@@ -14,18 +14,36 @@ enum datatype token_to_datatype(enum token_type tokenType);
 enum expr_type {
     EXPR_CONSTANT,
     EXPR_IDENTIFIER,
+    EXPR_BINARY_OPERATION,      // TODO: add support for binary operations
+};
+
+enum binary_operation {
+    EXPR_BINARY_PLUS,
+    EXPR_BINARY_MINUS,
+    EXPR_BINARY_DIV,
+    EXPR_BINARY_MUL
 };
 
 struct Expr
 {
     enum expr_type type;
 
-    struct {
-        bool with_operation;
-        struct token tk;
-    } prefix;
+    union {
+        struct {
+            struct {
+                bool with_operation;
+                struct token tk;
+            } prefix;
 
-    const char* value;
+            const char* value;
+        } sin;                  // single
+
+        struct {
+            struct Expr *left;
+            enum binary_operation operation;
+            struct Expr *right;
+        } bin;                  // binary
+    } obj;
 };
 
 /** return <expr>; */
