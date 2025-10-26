@@ -16,3 +16,4 @@ bool check(enum token_type expected, struct global_vars *vars);
 
 // source: expr.c
 extern struct Expr *parseExpression(struct global_vars *vars);
+void cleanupExpression(struct Expr *expr);

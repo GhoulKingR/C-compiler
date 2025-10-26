@@ -17,7 +17,7 @@ factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary
                | primary ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"
-               | "(" expression ")" ;
+               | IDENTIFIER | "(" expression ")" ;
 ```
 
 # intermediate representation

@@ -124,40 +124,78 @@ struct m_vector *lexer(const char *content)
                 current++;
                 break;
             case '=':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_EQUAL,
-                    .value = "=",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_EQUAL_EQUAL,
+                        .value = "==",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_EQUAL,
+                        .value = "=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '!':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_BANG,
-                    .value = "!",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_BANG_EQUAL,
+                        .value = "!=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_BANG,
+                        .value = "!",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '>':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_GREATER_THAN,
-                    .value = ">",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_GREATER_THAN_EQUAL,
+                        .value = ">=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_GREATER_THAN,
+                        .value = ">",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '<':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_LESS_THAN,
-                    .value = "<",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_LESS_THAN_EQUAL,
+                        .value = "<=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_LESS_THAN,
+                        .value = "<",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '-':
                 token_insert(tokens, (struct token) {
@@ -240,6 +278,7 @@ struct m_vector *lexer(const char *content)
                     .line = line,
                     .allocated = true,
                 });
+                // TODO: Add support for escaped chars
                     
                 if (content[++current] == '\'') {
                     current++;

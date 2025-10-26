@@ -211,10 +211,10 @@ static void cleanup_statements(struct m_vector* statements /*: struct variable_d
         struct statement st = statement_at(statements, i);
         switch (st.type) {
             case STATEMENT_RETURN:
-                free(st.obj.ret.value);
+                cleanupExpression(st.obj.ret.value);
                 break;
             case STATEMENT_VARIABLE_DECL:
-                free(st.obj.var.value);
+                cleanupExpression(st.obj.var.value);
                 break;
         }
     }
@@ -229,7 +229,7 @@ static void cleanup_declaration(struct declaration d) {
         break;
 
     case DECLARATION_VARIABLE:
-        free(d.obj.var.value);
+        cleanupExpression(d.obj.var.value);
         break;
     
     default:

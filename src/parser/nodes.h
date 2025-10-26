@@ -12,16 +12,9 @@ int datatype_size (enum datatype type);
 enum datatype token_to_datatype(enum token_type tokenType);
 
 enum expr_type {
-    EXPR_CONSTANT,
-    EXPR_IDENTIFIER,
-    EXPR_BINARY_OPERATION,      // TODO: add support for binary operations
-};
-
-enum binary_operation {
-    EXPR_BINARY_PLUS,
-    EXPR_BINARY_MINUS,
-    EXPR_BINARY_DIV,
-    EXPR_BINARY_MUL
+    EXPR_UNARY_OPERATION,
+    EXPR_PRIMARY,
+    EXPR_BINARY_OPERATION,
 };
 
 struct Expr
@@ -30,19 +23,19 @@ struct Expr
 
     union {
         struct {
-            struct {
-                bool with_operation;
-                struct token tk;
-            } prefix;
+            struct token prefix;
+            struct Expr* value;
+        } unary;                // unary
 
-            const char* value;
-        } sin;                  // single
+        struct {
+            struct token value;
+        } primary;              // single
 
         struct {
             struct Expr *left;
-            enum binary_operation operation;
+            struct token operation;
             struct Expr *right;
-        } bin;                  // binary
+        } binary;               // binary
     } obj;
 };
 
@@ -109,8 +102,4 @@ struct program
 {
     struct m_vector *declarations;     //: struct declaration
 };
-
-// <identifier> : IDENTIFIER
-// <int>        : CONSTANT
-
 /** AST nodes definitions end **/

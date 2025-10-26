@@ -83,47 +83,115 @@ static int get_stack_pos(struct arm_program_global_var *vars, const char *name) 
  * compiles an expression and stores its results at w0/x0
  **/
 static bool arm_compile_expression(struct arm_program_global_var *var, struct Expr* expr) {
-    // mov w0, #23
-    if (expr->type == EXPR_CONSTANT) {
-        arm_program_append(var, "    mov w0, #", 13);
-        arm_program_append(var, expr->obj.sin.value, strlen(expr->obj.sin.value));
-        arm_program_append(var, "\n", 1);
-    } else if (expr->type == EXPR_IDENTIFIER) {
-        arm_program_append(var, "    ldr w0, [x12, #", 19);
+    if (expr->type == EXPR_UNARY_OPERATION) {
+        arm_compile_expression(var, expr->obj.unary.value);
 
-        int pos = get_stack_pos(var, expr->obj.sin.value);
-        if (pos == -1) {
-            fprintf(stderr, "Variable %s is not defined on line %d\n",
-                    expr->obj.sin.value, expr->obj.sin.prefix.tk.line);
-            return false;
-        }
-
-        char* pos_str = int_to_str(pos);
-        arm_program_append(var, pos_str, strlen(pos_str));
-        arm_program_append(var, "]\n", 2);
-        free(pos_str);
-    }
-
-    // prefix operations happen here
-    if (expr->obj.sin.prefix.with_operation) {
-        if (expr->obj.sin.prefix.tk.type == TOKEN_MINUS) {
+        // prefix operations happen here
+        if (expr->obj.unary.prefix.type == TOKEN_MINUS) {
             // neg w0, w0
             arm_program_append(var, "    neg w0, w0\n", 15);
-        } else if (expr->obj.sin.prefix.tk.type == TOKEN_TILDA) {
+        } else if (expr->obj.unary.prefix.type == TOKEN_TILDA) {
             // mvn w0, w0
             arm_program_append(var, "    mvn w0, w0\n", 15);
-        } else if (expr->obj.sin.prefix.tk.type == TOKEN_BANG) {
+        } else if (expr->obj.unary.prefix.type == TOKEN_BANG) {
             // cmp w0, #0
             // cset w0, eq
             arm_program_append(var, "    cmp w0, #0\n", 15);
             arm_program_append(var, "    cset w0, eq\n", 16);
         } else {
-            fprintf(stderr, "Unsupported unary operation '%s'\n", expr->obj.sin.prefix.tk.value);
+            fprintf(stderr, "Unsupported unary operation '%s'\n", expr->obj.unary.prefix.value);
             return false;
         }
-    }
 
-    return true;
+        return true;
+    } else if (expr->type == EXPR_PRIMARY) {
+        // mov w0, #23
+        if (expr->obj.primary.value.type == TOKEN_CONSTANT) {
+            arm_program_append(var, "    mov w0, #", 13);
+            arm_program_append(var, expr->obj.primary.value.value, strlen(expr->obj.primary.value.value));
+            arm_program_append(var, "\n", 1);
+        } else if (expr->obj.primary.value.type == TOKEN_IDENTIFIER) {
+            arm_program_append(var, "    ldr w0, [x12, #", 19);
+
+            int pos = get_stack_pos(var, expr->obj.primary.value.value);
+            if (pos == -1) {
+                fprintf(stderr, "Variable %s is not defined on line %d\n",
+                        expr->obj.primary.value.value, expr->obj.primary.value.line);
+                return false;
+            }
+
+            char* pos_str = int_to_str(pos);
+            arm_program_append(var, pos_str, strlen(pos_str));
+            arm_program_append(var, "]\n", 2);
+            free(pos_str);
+        }
+
+        return true;
+    } else if (expr->type == EXPR_BINARY_OPERATION) {
+        // compile the left side of the expression.
+        arm_compile_expression(var, expr->obj.binary.left);
+
+        // This stores its results in w0/x0 register so 
+        // move it to stack before running the next side of the operation
+        arm_program_append(var, "    sub sp, sp, #16\n", 20);
+        arm_program_append(var, "    str x0, [sp]\n", 17);
+
+        // compile the right side of the expression.
+        arm_compile_expression(var, expr->obj.binary.right);
+
+        arm_program_append(var, "    ldr x1, [sp]\n", 17);
+        arm_program_append(var, "    add sp, sp, #16\n", 20);   // restore stack pointer
+
+        switch (expr->obj.binary.operation.type) {
+            case TOKEN_PLUS:
+                arm_program_append(var, "    add x0, x1, x0\n", 19);
+                break;
+            case TOKEN_MINUS:
+                arm_program_append(var, "    sub x0, x1, x0\n", 19);
+                break;
+            case TOKEN_STAR:
+                arm_program_append(var, "    mul x0, x1, x0\n", 19);
+                break;
+            case TOKEN_SLASH:
+                arm_program_append(var, "    sdiv x0, x1, x0\n", 20);
+                break;
+            case TOKEN_BANG_EQUAL:
+                arm_program_append(var, "    cmp x1, x0\n", 15);
+                arm_program_append(var, "    cset x0, ne\n", 16);
+                break;
+            case TOKEN_EQUAL_EQUAL:
+                arm_program_append(var, "    cmp x1, x0\n", 15);
+                arm_program_append(var, "    cset x0, eq\n", 16);
+                break;
+            case TOKEN_GREATER_THAN:
+                arm_program_append(var, "    cmp x1, x0\n", 15);
+                arm_program_append(var, "    cset x0, gt\n", 16);
+                break;
+            case TOKEN_GREATER_THAN_EQUAL:
+                arm_program_append(var, "    cmp x1, x0\n", 15);
+                arm_program_append(var, "    cset x0, ge\n", 16);
+                break;
+            case TOKEN_LESS_THAN:
+                arm_program_append(var, "    cmp x1, x0\n", 15);
+                arm_program_append(var, "    cset x0, lt\n", 16);
+                break;
+            case TOKEN_LESS_THAN_EQUAL:
+                arm_program_append(var, "    cmp x1, x0\n", 15);
+                arm_program_append(var, "    cset x0, le\n", 16);
+                break;
+
+            default:
+                fprintf(stderr, "Unexpected operator token '%s' on like %d\n",
+                        expr->obj.binary.operation.value,
+                        expr->obj.binary.operation.line);
+                return false;
+        }
+
+        return true;
+    } else {
+        fprintf(stderr, "Unsupported expression type\n");
+        return false;
+    }
 }
 
 static bool arm_compile_variabledecl(struct arm_program_global_var *var, struct variable_decl *vd) {
