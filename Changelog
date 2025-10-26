@@ -1,4 +1,7 @@
 Sat Oct 15 2025
-	* added support for comments
-	* added unary ! and ~ support
-	* added support for identifiers in expressions
+* added support for bang operator and completed unary operations
+
+Sat Oct 15 2025
+* added support for comments
+* added unary ! and ~ support
+* added support for identifiers in expressions

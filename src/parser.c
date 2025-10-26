@@ -48,6 +48,11 @@ struct Expr *parseExpression(struct global_vars *vars) {
         result->type = EXPR_CONSTANT;
         result->value = constant.value;
         vars->progress++;
+    } else if (check(TOKEN_IDENTIFIER, vars)) {
+        struct token constant = token_at(vars->tokens, vars->progress);
+        result->type = EXPR_IDENTIFIER;
+        result->value = constant.value;
+        vars->progress++;
     } else goto syntax_error;
 
     return result;
@@ -72,34 +77,13 @@ static struct m_vector *parseStatements(struct global_vars *vars) /* Statement *
         /* return :: "return " (CONSTANT | IDENTIFIER) ";" */
         if (check(TOKEN_RETURN, vars)) {
             vars->progress++;
+            
+            struct Expr *expr = parseExpression(vars);
 
-
-            if (check(TOKEN_CONSTANT, vars)) {
-                statement_insert(statements, (struct statement) {
-                    .type = STATEMENT_RETURN,
-                    .obj = {
-                        .ret = {
-                            .value = {
-                                .type = EXPR_CONSTANT,
-                                .value = token_at(vars->tokens, vars->progress).value,
-                            }
-                        }
-                    }
-                });
-            } else if (check(TOKEN_IDENTIFIER, vars)) {
-                statement_insert(statements, (struct statement) {
-                    .type = STATEMENT_RETURN,
-                    .obj = {
-                        .ret = {
-                            .value = {
-                                .type = EXPR_IDENTIFIER,
-                                .value = token_at(vars->tokens, vars->progress).value,
-                            }
-                        }
-                    }
-                });
-            }
-            vars->progress++;
+            statement_insert(statements, (struct statement) {
+                .type = STATEMENT_RETURN,
+                .obj.ret.value = expr,
+            });
 
             if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
             else goto syntax_error;
@@ -269,7 +253,14 @@ struct program *parse(struct m_vector *tokens) {
 static void cleanup_statements(struct m_vector* statements /*: struct variable_decl */) {
     for (int i = 0; i < statements->_size; i++) {
         struct statement st = statement_at(statements, i);
-        free(st.obj.var.value);
+        switch (st.type) {
+            case STATEMENT_RETURN:
+                free(st.obj.ret.value);
+                break;
+            case STATEMENT_VARIABLE_DECL:
+                free(st.obj.var.value);
+                break;
+        }
     }
 }
 

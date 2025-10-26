@@ -1,5 +1,5 @@
 int main(void) {
-    int digit = -2;     /* digits */
+    int digit = 200;     /* digits */
     char name = 'a';
-    return digit;
+    return !digit;
 }

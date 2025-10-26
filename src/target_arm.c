@@ -89,7 +89,7 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
         arm_program_append(var, expr->value, strlen(expr->value));
         arm_program_append(var, "\n", 1);
     } else if (expr->type == EXPR_IDENTIFIER) {
-        arm_program_append(var, "    mov w0, [x12, #", 19);
+        arm_program_append(var, "    ldr w0, [x12, #", 19);
 
         int pos = get_stack_pos(var, expr->value);
         if (pos == -1) {
@@ -111,6 +111,11 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
         } else if (expr->prefix.tk.type == TOKEN_TILDA) {
             // mvn w0, w0
             arm_program_append(var, "    mvn w0, w0\n", 15);
+        } else if (expr->prefix.tk.type == TOKEN_BANG) {
+            // cmp w0, #0
+            // cset w0, eq
+            arm_program_append(var, "    cmp w0, #0\n", 15);
+            arm_program_append(var, "    cset w0, eq\n", 16);
         } else {
             fprintf(stderr, "Unsupported unary operation '%s'\n", expr->prefix.tk.value);
             return false;
@@ -143,7 +148,7 @@ static bool arm_compile_variabledecl(struct arm_program_global_var *var, struct 
 
 static bool arm_compile_return(struct arm_program_global_var *vars, struct Return r)
 {
-    arm_compile_expression(vars, &r.value);
+    arm_compile_expression(vars, r.value);
 
     // restore all stack allocated variables
     /**

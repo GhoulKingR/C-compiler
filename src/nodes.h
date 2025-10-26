@@ -31,7 +31,7 @@ struct Expr
 /** return <expr>; */
 struct Return
 {
-    struct Expr value;
+    struct Expr *value;
 };
 
 /** <datatype> variable_name = <expr> */
