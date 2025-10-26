@@ -1,5 +1,6 @@
 Sat Oct 15 2025
 * added support for bang operator and completed unary operations
+* added support for most binary operators
 
 Sat Oct 15 2025
 * added support for comments

@@ -43,7 +43,8 @@ static struct Expr *parsePrimary(struct global_vars *vars) {
         vars->progress++;
         return result;
     } else if (check(TOKEN_OPEN_PARENTHESIS, vars)) {
-        free(result);
+        vars->progress++;
+
         result = parseExpression(vars);
         if (result == NULL) return NULL;
 
