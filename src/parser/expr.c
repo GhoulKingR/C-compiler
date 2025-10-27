@@ -73,7 +73,7 @@ static struct Expr *parseUnary(struct global_vars *vars) {
         result->obj.unary.prefix = token_at(vars->tokens, vars->progress);
         vars->progress++;
 
-        struct Expr *value = parsePrimary(vars);
+        struct Expr *value = parseUnary(vars);
         if (result == NULL) {
             free(result);
             return NULL;
@@ -90,7 +90,7 @@ static struct Expr *parseFactor(struct global_vars *vars) {
     struct Expr *left = parseUnary(vars);
     if (left == NULL) return NULL;
 
-    if (check(TOKEN_SLASH, vars) || check(TOKEN_STAR, vars)) {
+    while (check(TOKEN_SLASH, vars) || check(TOKEN_STAR, vars)) {
         struct token operation = token_at(vars->tokens, vars->progress);
         vars->progress++;
 
@@ -102,7 +102,8 @@ static struct Expr *parseFactor(struct global_vars *vars) {
         result->obj.binary.left = left;
         result->obj.binary.right = right;
         result->obj.binary.operation = operation;
-        return result;
+
+        left = result;
     }
 
     return left;
@@ -116,7 +117,7 @@ static struct Expr *parseTerm(struct global_vars *vars) {
     struct Expr *left = parseFactor(vars);
     if (left == NULL) return NULL;
 
-    if (check(TOKEN_MINUS, vars) || check(TOKEN_PLUS, vars)) {
+    while (check(TOKEN_MINUS, vars) || check(TOKEN_PLUS, vars)) {
         struct token operation = token_at(vars->tokens, vars->progress);
         vars->progress++;
 
@@ -128,7 +129,8 @@ static struct Expr *parseTerm(struct global_vars *vars) {
         result->obj.binary.left = left;
         result->obj.binary.right = right;
         result->obj.binary.operation = operation;
-        return result;
+
+        left = result;
     }
 
     return left;
@@ -142,7 +144,7 @@ static struct Expr *parseComparison(struct global_vars *vars) {
     struct Expr *left = parseTerm(vars);
     if (left == NULL) return NULL;
 
-    if (check(TOKEN_GREATER_THAN, vars) ||
+    while (check(TOKEN_GREATER_THAN, vars) ||
         check(TOKEN_GREATER_THAN_EQUAL, vars) ||
         check(TOKEN_LESS_THAN, vars) ||
         check(TOKEN_LESS_THAN_EQUAL, vars))
@@ -158,7 +160,8 @@ static struct Expr *parseComparison(struct global_vars *vars) {
         result->obj.binary.left = left;
         result->obj.binary.right = right;
         result->obj.binary.operation = operation;
-        return result;
+
+        left = result;
     }
 
     return left;
@@ -172,7 +175,7 @@ static struct Expr *parseEquality(struct global_vars *vars) {
     struct Expr *left = parseComparison(vars);
     if (left == NULL) return NULL;
 
-    if (check(TOKEN_BANG_EQUAL, vars) || check(TOKEN_EQUAL_EQUAL, vars))
+    while (check(TOKEN_BANG_EQUAL, vars) || check(TOKEN_EQUAL_EQUAL, vars))
     {
         struct token operation = token_at(vars->tokens, vars->progress);
         vars->progress++;
@@ -185,7 +188,8 @@ static struct Expr *parseEquality(struct global_vars *vars) {
         result->obj.binary.left = left;
         result->obj.binary.right = right;
         result->obj.binary.operation = operation;
-        return result;
+
+        left = result;
     }
 
     return left;
@@ -199,7 +203,7 @@ static struct Expr *parseBitOpers(struct global_vars *vars) {
     struct Expr *left = parseEquality(vars);
     if (left == NULL) return NULL;
 
-    if (check(TOKEN_AND, vars) || check(TOKEN_PIPE, vars)) {
+    while (check(TOKEN_AND, vars) || check(TOKEN_PIPE, vars)) {
         struct token operation = token_at(vars->tokens, vars->progress);
         vars->progress++;
 
@@ -211,7 +215,8 @@ static struct Expr *parseBitOpers(struct global_vars *vars) {
         result->obj.binary.left = left;
         result->obj.binary.right = right;
         result->obj.binary.operation = operation;
-        return result;
+
+        left = result;
     }
 
     return left;
