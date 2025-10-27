@@ -9,7 +9,8 @@ int main () {
 
 # grammar
 ```
-expression     → equality ;
+expression     → bit_opers ;
+bit_opers      → equality ( ( "&" | "|" | "^" ) equality )* ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;

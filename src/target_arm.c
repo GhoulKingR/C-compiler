@@ -155,6 +155,12 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
             case TOKEN_SLASH:
                 arm_program_append(var, "    sdiv x0, x1, x0\n", 20);
                 break;
+            case TOKEN_AND:
+                arm_program_append(var, "    and x0, x1, x0\n", 19);
+                break;
+            case TOKEN_PIPE:
+                arm_program_append(var, "    orr x0, x1, x0\n", 19);
+                break;
             case TOKEN_BANG_EQUAL:
                 arm_program_append(var, "    cmp x1, x0\n", 15);
                 arm_program_append(var, "    cset x0, ne\n", 16);

@@ -123,6 +123,24 @@ struct m_vector *lexer(const char *content)
                 });
                 current++;
                 break;
+            case '&':
+                token_insert(tokens, (struct token) {
+                    .type = TOKEN_AND,
+                    .value = "&",
+                    .line = line,
+                    .allocated = false,
+                });
+                current++;
+                break;
+            case '|':
+                token_insert(tokens, (struct token) {
+                    .type = TOKEN_PIPE,
+                    .value = "|",
+                    .line = line,
+                    .allocated = false,
+                });
+                current++;
+                break;
             case '=':
                 current++;
                 if (content[current] == '=') {

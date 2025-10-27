@@ -195,6 +195,32 @@ cleanup:
     return NULL;
 }
 
+static struct Expr *parseBitOpers(struct global_vars *vars) {
+    struct Expr *left = parseEquality(vars);
+    if (left == NULL) return NULL;
+
+    if (check(TOKEN_AND, vars) || check(TOKEN_PIPE, vars)) {
+        struct token operation = token_at(vars->tokens, vars->progress);
+        vars->progress++;
+
+        struct Expr *right = parseEquality(vars);
+        if (right == NULL) goto cleanup;
+
+        struct Expr *result = malloc(sizeof(struct Expr));
+        result->type = EXPR_BINARY_OPERATION;
+        result->obj.binary.left = left;
+        result->obj.binary.right = right;
+        result->obj.binary.operation = operation;
+        return result;
+    }
+
+    return left;
+
+cleanup:
+    cleanupExpression(left);
+    return NULL;
+}
+
 struct Expr *parseExpression(struct global_vars *vars) {
     return parseEquality(vars);
 }
