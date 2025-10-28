@@ -12,9 +12,11 @@ int datatype_size (enum datatype type);
 enum datatype token_to_datatype(enum token_type tokenType);
 
 enum expr_type {
-    EXPR_UNARY_OPERATION,
+    EXPR_ASSIGNMENT,
     EXPR_PRIMARY,
+    EXPR_UNARY_OPERATION,
     EXPR_BINARY_OPERATION,
+    EXPR_TERNARY_OPERATION,
 };
 
 struct Expr
@@ -23,9 +25,21 @@ struct Expr
 
     union {
         struct {
-            struct token prefix;
+            struct token name;
+            struct token operation;
+            struct Expr *right;
+        } assignment;
+
+        struct {
+            struct token prefix;    // prefix or postfix
             struct Expr* value;
         } unary;                // unary
+
+        struct {
+            struct Expr *condition;
+            struct Expr *left;
+            struct Expr *right;
+        } ternary;
 
         struct {
             struct token value;
@@ -56,7 +70,8 @@ struct variable_decl
 /* statement start */
 enum statement_type {
     STATEMENT_RETURN,
-    STATEMENT_VARIABLE_DECL
+    STATEMENT_VARIABLE_DECL,
+    // STATEMENT_EXPRESSION,
 };
 
 struct statement

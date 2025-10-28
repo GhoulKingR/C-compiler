@@ -2,6 +2,7 @@
 #include "parser/nodes.h"
 #include "token.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 struct var {
     size_t size;
@@ -27,6 +28,7 @@ struct arm_program_global_var {
 
     int stack_size;
     struct m_vector *_variables;
+    int l_pos;
 };
 
 static void arm_program_checkandresize(struct arm_program_global_var *var, size_t size) {
@@ -87,22 +89,30 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
         arm_compile_expression(var, expr->obj.unary.value);
 
         // prefix operations happen here
-        if (expr->obj.unary.prefix.type == TOKEN_MINUS) {
-            // neg w0, w0
-            arm_program_append(var, "    neg w0, w0\n", 15);
-        } else if (expr->obj.unary.prefix.type == TOKEN_TILDA) {
-            // mvn w0, w0
-            arm_program_append(var, "    mvn w0, w0\n", 15);
-        } else if (expr->obj.unary.prefix.type == TOKEN_BANG) {
-            // cmp w0, #0
-            // cset w0, eq
-            arm_program_append(var, "    cmp w0, #0\n", 15);
-            arm_program_append(var, "    cset w0, eq\n", 16);
-        } else {
-            fprintf(stderr, "Unsupported unary operation '%s'\n", expr->obj.unary.prefix.value);
-            return false;
-        }
+        switch (expr->obj.unary.prefix.type) {
+            case TOKEN_PLUS:
+                break;
+            case TOKEN_MINUS:
+                arm_program_append(var, "    neg w0, w0\n", 15);
+                break;
+            case TOKEN_TILDA:
+                arm_program_append(var, "    mvn w0, w0\n", 15);
+                break;
+            case TOKEN_BANG:
+                arm_program_append(var, "    cmp w0, #0\n", 15);
+                arm_program_append(var, "    cset w0, eq\n", 16);
+                break;
+            case TOKEN_PLUS_PLUS:
+                arm_program_append(var, "    add w0, w0, #1\n", 19);
+                break;
+            case TOKEN_MINUS_MINUS:
+                arm_program_append(var, "    add w0, w0, #1\n", 19);
+                break;
 
+            default:
+                fprintf(stderr, "Unsupported unary operation '%s'\n", expr->obj.unary.prefix.value);
+                return false;
+        }
         return true;
     } else if (expr->type == EXPR_PRIMARY) {
         // mov w0, #23
@@ -142,6 +152,11 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
         arm_program_append(var, "    ldr x1, [sp]\n", 17);
         arm_program_append(var, "    add sp, sp, #16\n", 20);   // restore stack pointer
 
+        struct {
+            char* str;
+            int   count;
+        } l_pos[2] = { 0 };
+
         switch (expr->obj.binary.operation.type) {
             case TOKEN_PLUS:
                 arm_program_append(var, "    add x0, x1, x0\n", 19);
@@ -155,8 +170,102 @@ static bool arm_compile_expression(struct arm_program_global_var *var, struct Ex
             case TOKEN_SLASH:
                 arm_program_append(var, "    sdiv x0, x1, x0\n", 20);
                 break;
+            case TOKEN_PERCENT:
+                arm_program_append(var, "    sdiv x3, x1, x0\n", 20);
+                arm_program_append(var, "    mul x2, x3, x0\n", 19);
+                arm_program_append(var, "    sub x0, x1, x2\n", 19);
+                break;
             case TOKEN_AND:
                 arm_program_append(var, "    and x0, x1, x0\n", 19);
+                break;
+            case TOKEN_AND_AND:
+                l_pos[0].str = int_to_str(var->l_pos);
+                l_pos[0].count = digit_count(var->l_pos);
+
+                // cmp x1, #0
+                // beq L1
+                arm_program_append(var, "    cmp x1, #0\n", 15);
+                arm_program_append(var, "    beq L", 9);
+                arm_program_append(var, l_pos[0].str, l_pos[0].count);
+                arm_program_append(var, "\n", 1);
+
+                // cmp x0, #0
+                // beq L2
+                arm_program_append(var, "    cmp x0, #0\n", 15);
+                arm_program_append(var, "    beq L", 9);
+                arm_program_append(var, l_pos[0].str, l_pos[0].count);
+                arm_program_append(var, "\n", 1);
+
+                arm_program_append(var, "    mov x0, #1\n", 15);
+
+                l_pos[1].str = int_to_str(var->l_pos + 1);
+                l_pos[1].count = digit_count(var->l_pos + 1);
+                arm_program_append(var, "    b L", 7);
+                arm_program_append(var, l_pos[1].str, l_pos[1].count);
+                arm_program_append(var, "\n", 1);
+
+                arm_program_append(var, "L", 1);
+                arm_program_append(var, l_pos[0].str, l_pos[0].count);
+                arm_program_append(var, ":\n", 2);
+                arm_program_append(var, "    mov x0, #0\n", 15);
+
+                arm_program_append(var, "L", 1);
+                arm_program_append(var, l_pos[1].str, l_pos[1].count);
+                arm_program_append(var, ":\n", 2);
+
+                var->l_pos += 2;
+                free(l_pos[0].str);
+                free(l_pos[1].str);
+                l_pos[0].str = NULL;
+                l_pos[0].count = 0;
+                l_pos[1].str = NULL;
+                l_pos[1].count = 0;
+                break;
+            case TOKEN_PIPE_PIPE:
+                l_pos[0].str = int_to_str(var->l_pos);
+                l_pos[0].count = digit_count(var->l_pos);
+
+                // cmp x1, #0
+                // beq L1
+                arm_program_append(var, "    cmp x1, #0\n", 15);
+                arm_program_append(var, "    bne L", 9);
+                arm_program_append(var, l_pos[0].str, l_pos[0].count);
+                arm_program_append(var, "\n", 1);
+
+                // cmp x0, #0
+                // beq L2
+                arm_program_append(var, "    cmp x0, #0\n", 15);
+                arm_program_append(var, "    bne L", 9);
+                arm_program_append(var, l_pos[0].str, l_pos[0].count);
+                arm_program_append(var, "\n", 1);
+
+                arm_program_append(var, "    mov x0, #0\n", 15);
+
+                l_pos[1].str = int_to_str(var->l_pos + 1);
+                l_pos[1].count = digit_count(var->l_pos + 1);
+                arm_program_append(var, "    b L", 7);
+                arm_program_append(var, l_pos[1].str, l_pos[1].count);
+                arm_program_append(var, "\n", 1);
+
+                arm_program_append(var, "L", 1);
+                arm_program_append(var, l_pos[0].str, l_pos[0].count);
+                arm_program_append(var, ":\n", 2);
+                arm_program_append(var, "    mov x0, #1\n", 15);
+
+                arm_program_append(var, "L", 1);
+                arm_program_append(var, l_pos[1].str, l_pos[1].count);
+                arm_program_append(var, ":\n", 2);
+
+                var->l_pos += 2;
+                free(l_pos[0].str);
+                free(l_pos[1].str);
+                l_pos[0].str = NULL;
+                l_pos[0].count = 0;
+                l_pos[1].str = NULL;
+                l_pos[1].count = 0;
+                break;
+            case TOKEN_CARET:
+                arm_program_append(var, "    eor x0, x1, x0\n", 19);
                 break;
             case TOKEN_PIPE:
                 arm_program_append(var, "    orr x0, x1, x0\n", 19);
@@ -322,6 +431,7 @@ const char* arm_compile(struct program *p) {
         ._capacity = 100,
         .stack_size = 0,
         ._variables = vector_init(sizeof(struct var)),
+        .l_pos = 0,
     };
     memset(var.memory, 0, 100);
 

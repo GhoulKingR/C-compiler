@@ -123,23 +123,97 @@ struct m_vector *lexer(const char *content)
                 });
                 current++;
                 break;
-            case '&':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_AND,
-                    .value = "&",
-                    .line = line,
-                    .allocated = false,
-                });
+            case '^':
                 current++;
+                if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_CARET_EQUAL,
+                        .value = "^=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_CARET,
+                        .value = "^",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
+                break;
+            case '%':
+                current++;
+                if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PERCENT_EQUAL,
+                        .value = "%=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PERCENT,
+                        .value = "%",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
+                break;
+            case '&':
+                current++;
+                if (content[current] == '&') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_AND_AND,
+                        .value = "&&",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_AND_EQUAL,
+                        .value = "&=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_AND,
+                        .value = "&",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '|':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_PIPE,
-                    .value = "|",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '|') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PIPE_PIPE,
+                        .value = "||",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PIPE_EQUAL,
+                        .value = "|=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PIPE,
+                        .value = "|",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '=':
                 current++;
@@ -188,6 +262,25 @@ struct m_vector *lexer(const char *content)
                         .line = line,
                         .allocated = false,
                     });
+                    current++;
+                } else if (content[current] == '>') {
+                    current++;
+                    if (content[current] == '=') {
+                        token_insert(tokens, (struct token) {
+                            .type = TOKEN_GT_GT_EQUAL,
+                            .value = ">>=",
+                            .line = line,
+                            .allocated = false,
+                        });
+                        current++;
+                    } else {
+                        token_insert(tokens, (struct token) {
+                            .type = TOKEN_GT_GT,
+                            .value = ">>",
+                            .line = line,
+                            .allocated = false,
+                        });
+                    }
                 } else {
                     token_insert(tokens, (struct token) {
                         .type = TOKEN_GREATER_THAN,
@@ -206,6 +299,25 @@ struct m_vector *lexer(const char *content)
                         .line = line,
                         .allocated = false,
                     });
+                    current++;
+                } else if (content[current] == '<') {
+                    current++;
+                    if (content[current] == '=') {
+                        token_insert(tokens, (struct token) {
+                            .type = TOKEN_LT_LT_EQUAL,
+                            .value = "<<=",
+                            .line = line,
+                            .allocated = false,
+                        });
+                        current++;
+                    } else {
+                        token_insert(tokens, (struct token) {
+                            .type = TOKEN_LT_LT,
+                            .value = "<<",
+                            .line = line,
+                            .allocated = false,
+                        });
+                    }
                 } else {
                     token_insert(tokens, (struct token) {
                         .type = TOKEN_LESS_THAN,
@@ -216,22 +328,58 @@ struct m_vector *lexer(const char *content)
                 }
                 break;
             case '-':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_MINUS,
-                    .value = "-",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '-') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_MINUS_MINUS,
+                        .value = "--",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_MINUS_EQUAL,
+                        .value = "-=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_MINUS,
+                        .value = "-",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '+':
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_PLUS,
-                    .value = "+",
-                    .line = line,
-                    .allocated = false,
-                });
                 current++;
+                if (content[current] == '+') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PLUS_PLUS,
+                        .value = "++",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PLUS_EQUAL,
+                        .value = "+=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_PLUS,
+                        .value = "+",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '/':
                 current++;
@@ -260,6 +408,14 @@ struct m_vector *lexer(const char *content)
                             }
                         } else current++;
                     }
+                } else if (content[current] == '=') {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_SLASH_EQUAL,
+                        .value = "/=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                    current++;
                 } else {
                     token_insert(tokens, (struct token) {
                         .type = TOKEN_SLASH,
@@ -267,7 +423,6 @@ struct m_vector *lexer(const char *content)
                         .line = line,
                         .allocated = false,
                     });
-                    break;
                 }
                 break;
             case '~':
@@ -279,14 +434,42 @@ struct m_vector *lexer(const char *content)
                 });
                 current++;
                 break;
-            case '*':
+            case '?':
                 token_insert(tokens, (struct token) {
-                    .type = TOKEN_STAR,
-                    .value = "*",
+                    .type = TOKEN_QUESTION_MARK,
+                    .value = "?",
                     .line = line,
                     .allocated = false,
                 });
                 current++;
+                break;
+            case ':':
+                token_insert(tokens, (struct token) {
+                    .type = TOKEN_COLON,
+                    .value = ":",
+                    .line = line,
+                    .allocated = false,
+                });
+                current++;
+                break;
+            case '*':
+                current++;
+                if (content[current] == '=') {
+                    current++;
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_STAR_EQUAL,
+                        .value = "*=",
+                        .line = line,
+                        .allocated = false,
+                    });
+                } else {
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_STAR,
+                        .value = "*",
+                        .line = line,
+                        .allocated = false,
+                    });
+                }
                 break;
             case '\'':
                 current++;
@@ -298,11 +481,8 @@ struct m_vector *lexer(const char *content)
                 });
                 // TODO: Add support for escaped chars
                     
-                if (content[++current] == '\'') {
-                    current++;
-                } else {
-                    goto syntax_error;
-                }
+                if (content[++current] == '\'') current++;
+                else goto syntax_error;
                 break;
 
             // skips

@@ -1,13 +1,20 @@
 #include "helpers.h"
 
+int digit_count(int d) {
+    int i;
+    for (i = 0; d > 0; i++, d /= 10); 
+    return i == 0 ? 1 : i;
+}
+
 /**
  * Convert int to string. Result is allocated so remember
  * to free.
  */
 char *int_to_str(int value) {
-    char *result = (char*) malloc(4);
-    memset(result, 0, 4);
-    snprintf(result, 3, "%d", value);
+    int count = digit_count(value) + 1;
+    char *result = (char*) malloc(count);
+    memset(result, 0, count);
+    snprintf(result, count, "%d", value);
     return result;
 }
 

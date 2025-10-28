@@ -8,6 +8,7 @@ int main () {
 
 
 # grammar
+old
 ```
 expression     → bit_opers ;
 bit_opers      → equality ( ( "&" | "|" | "^" ) equality )* ;
@@ -20,6 +21,53 @@ unary          → ( "!" | "-" ) unary
 primary        → NUMBER | STRING | "true" | "false" | "nil"
                | IDENTIFIER | "(" expression ")" ;
 ```
+
+New
+```
+expression      → precedence14 ;
+precedence14    → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | "&=" | "^=" | "|=" ) precedence13
+                | precedence13 ;
+precedence13    → precedence12 ( "?" precedence12 ":" precedence12 )* ;
+precedence12    → precedence11 ( "||" precedence11 )* ;
+precedence11    → precedence10 ( "&&" precedence10 )* ;
+precedence10    → precedence9 ( "|" precedence9 )* ;
+precedence9     → precedence8 ( "^" precedence8 )* ;
+precedence8     → precedence7 ( "&" precedence7 )* ;
+precedence7     → precedence6 ( ( "!=" | "==" ) precedence6 )* ;
+precedence6     → precedence5 ( ( ">" | ">=" | "<" | "<=" ) precedence5 )* ;
+precedence5     → precedence4 ( ( "<<" | ">>" ) precedence4 )* ;
+precedence4     → precedence3 ( ( "+" | "-" ) precedence3 )* ;
+precedence3     → precedence2 ( ( "/" | "*" | "%" ) precedence2 )* ;
+precedence2     → ("++" | "--" | "+" | "-" | "!" | "~" ) precedence2
+                | precedence1 ;
+precedence1     → primary ("--" | "++")* ;
+primary         → NUMBER | CHAR | STRING | IDENTIFIER | "(" expression ")" ;
+```
+
+x1 && x0
+
+    cmp x1, #0
+    beq l1
+    cmp x0, #0
+    beq l1
+    mov x0, #1
+    b l2
+l1:
+    mov x0, #0
+l2:
+
+x1 || x0
+
+    cmp x1, #0
+    bne l1
+    cmp x0, #0
+    bne l1
+    mov x0, #0
+    b l2
+l1:
+    mov x0, #1
+l2:
+
 
 # intermediate representation
 
@@ -76,24 +124,3 @@ statement               :: <return> | <variable_decl>                   :: // co
 return                  :: "return " (CONSTANT | IDENTIFIER) ";"        :: Return ( value = CONSTANT )
 variable_decl           :: <type> IDENTIFIER "=" CONSTANT ";"           :: VariableDecl ( type = <type>, name = IDENTIFIER, value = CONSTANT )
 ```
-
-
-# Notes
-
-- Implement these expressions digit by digit first, then combine them (with nesting) at the end
-- To implement multiple-operation expressions you'll also have to build a mechanism that decays complex instructions to two-operation IRs
-- The decay mechanism will happen between the parser and converter
-
-
-# TODO
-
-- Implement an expression type
-- For now only able to hold constants and then swap it in place of the current way return holds values
-
-# Unary
-
-unary   ->  ("-" | "!" | "~") primary
-primary -> char | num
-
-char -- 'a'
-num  -- 123

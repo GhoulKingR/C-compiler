@@ -1,4 +1,5 @@
 #include "../token.h"
+#include "nodes.h"
 #include "parser.h"
 
 // checkes whether the token at the current position matches 
@@ -49,6 +50,17 @@ static struct m_vector *parseStatements(struct global_vars *vars) /* Statement *
             if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
             else goto syntax_error;
 
+        // } else {    // expressions
+        //     struct Expr *expr = parseExpression(vars);
+        //
+        //     if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
+        //     else goto syntax_error;
+        //
+        //     statement_insert(statements, (struct statement) {
+        //         .type = STATEMENT_EXPRESSION,
+        //         .obj.expr = expr,
+        //     });
+        // }
         /* variable_decl :: <type> IDENTIFIER "=" CONSTANT ";" */
         } else {
 
@@ -66,21 +78,19 @@ static struct m_vector *parseStatements(struct global_vars *vars) /* Statement *
             // '='
             if (check(TOKEN_EQUAL, vars)) vars->progress++;
             else goto syntax_error;
-            
+
             // get constant to store the variable name in 
             struct Expr *expr = parseExpression(vars);
 
             if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
             else goto syntax_error;
-            
+
             statement_insert(statements, (struct statement) {
                 .type = STATEMENT_VARIABLE_DECL,
-                .obj = {
-                    .var = {
-                        .name = identifier.value,
-                        .type = type,
-                        .value = expr,
-                    }
+                .obj.var = {
+                    .name = identifier.value,
+                    .type = type,
+                    .value = expr,
                 }
             });
         }
