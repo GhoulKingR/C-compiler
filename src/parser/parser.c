@@ -49,50 +49,49 @@ static struct m_vector *parseStatements(struct global_vars *vars) /* Statement *
 
             if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
             else goto syntax_error;
-
-        // } else {    // expressions
-        //     struct Expr *expr = parseExpression(vars);
-        //
-        //     if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
-        //     else goto syntax_error;
-        //
-        //     statement_insert(statements, (struct statement) {
-        //         .type = STATEMENT_EXPRESSION,
-        //         .obj.expr = expr,
-        //     });
-        // }
-        /* variable_decl :: <type> IDENTIFIER "=" CONSTANT ";" */
         } else {
-
             // get variable declaration data type
             enum datatype type = parseDataType(vars);
-            if (type == DATATYPE_ERR) goto cleanup;
+            if (type == DATATYPE_ERR) {
+                struct Expr *expr = parseExpression(vars);
 
-            // get variable declaration identifier (variable name)
-            struct token identifier;
-            if (check(TOKEN_IDENTIFIER, vars)) {
-                identifier = token_at(vars->tokens, vars->progress);
-                vars->progress++;
-            } else goto syntax_error;
+                if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
+                else goto syntax_error;
 
-            // '='
-            if (check(TOKEN_EQUAL, vars)) vars->progress++;
-            else goto syntax_error;
+                statement_insert(statements, (struct statement) {
+                    .type = STATEMENT_EXPRESSION,
+                    .obj.expr = expr,
+                });
 
-            // get constant to store the variable name in 
-            struct Expr *expr = parseExpression(vars);
+            /* variable_decl :: <type> IDENTIFIER "=" CONSTANT ";" */
+            } else {        // is variable declaration type
+                // get variable declaration identifier (variable name)
+                struct token identifier;
+                if (check(TOKEN_IDENTIFIER, vars)) {
+                    identifier = token_at(vars->tokens, vars->progress);
+                    vars->progress++;
+                } else goto syntax_error;
 
-            if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
-            else goto syntax_error;
+                // '='
+                if (check(TOKEN_EQUAL, vars)) vars->progress++;
+                else goto syntax_error;
 
-            statement_insert(statements, (struct statement) {
-                .type = STATEMENT_VARIABLE_DECL,
-                .obj.var = {
-                    .name = identifier.value,
-                    .type = type,
-                    .value = expr,
-                }
-            });
+                // get constant to store the variable name in 
+                struct Expr *expr = parseExpression(vars);
+
+                if (check(TOKEN_SEMICOLON, vars)) vars->progress++;
+                else goto syntax_error;
+
+                statement_insert(statements, (struct statement) {
+                    .type = STATEMENT_VARIABLE_DECL,
+                    .obj.var = {
+                        .name = identifier.value,
+                        .type = type,
+                        .value = expr,
+                        .line = identifier.line,
+                    }
+                });
+            }
         }
     }
 
@@ -225,6 +224,9 @@ static void cleanup_statements(struct m_vector* statements /*: struct variable_d
                 break;
             case STATEMENT_VARIABLE_DECL:
                 cleanupExpression(st.obj.var.value);
+                break;
+            case STATEMENT_EXPRESSION:
+                cleanupExpression(st.obj.expr);
                 break;
         }
     }

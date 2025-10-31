@@ -65,13 +65,14 @@ struct variable_decl
     enum datatype type;
     struct Expr *value;
     const char* name;
+    int line;
 };
 
 /* statement start */
 enum statement_type {
     STATEMENT_RETURN,
     STATEMENT_VARIABLE_DECL,
-    // STATEMENT_EXPRESSION,
+    STATEMENT_EXPRESSION,
 };
 
 struct statement
@@ -80,6 +81,7 @@ struct statement
     union {
         struct Return ret;
         struct variable_decl var;
+        struct Expr *expr;
     } obj;
 };
 
