@@ -493,8 +493,8 @@ static bool arm_compile_functiondecl(struct arm_program_global_var *vars, struct
      * Allocate the stack using using x12 as internal stack register
      * with 8 as example the asm would look like this:
      * 
-     *     sub sp, sp, #8
      *     mov x12, sp
+     *     sub sp, sp, #8
      */
     if (vars->stack_size % 16 != 0)
         vars->stack_size = vars->stack_size - (vars->stack_size % 16) + 16;
