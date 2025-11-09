@@ -12,6 +12,7 @@
 char *int_to_str(int value);
 char *str_sub(const char *root, int start, size_t size);
 bool is_digit(char c);
+bool is_hex(char c);
 bool is_alpha(char c);
 bool is_alnum(char c);
 int digit_count(int d);

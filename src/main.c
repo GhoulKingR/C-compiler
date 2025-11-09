@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "token.h"
 #include "parser/nodes.h"
 #include "helpers.h"
@@ -473,24 +475,63 @@ struct m_vector *lexer(const char *content)
                 break;
             case '\'':
                 current++;
-                token_insert(tokens, (struct token) {
-                    .type = TOKEN_CONSTANT, 
-                    .value = int_to_str((int) content[current]),
-                    .line = line,
-                    .allocated = true,
-                });
-                // TODO: Add support for escaped chars
+                {
+                    char toinsert;
+
+                    if (content[current] == '\\') {
+                        current++;
+                        char c = content[current];
+
+                        toinsert =  c == 'a' ? '\a' :
+                                    c == 'b' ? '\b' :
+                                    c == 'e' ? '\e' :
+                                    c == 'f' ? '\f' :
+                                    c == 'n' ? '\n' :
+                                    c == 'r' ? '\r' :
+                                    c == 't' ? '\t' :
+                                    c == 'v' ? '\v' :
+                                    c == '\\' ? '\\' :
+                                    c == '\'' ? '\'' :
+                                    c == '"' ? '"' :
+                                    c == '?' ? '\?' :
+                                    0;
+
+                        if (toinsert == 0) {
+                            if (is_digit(content[current]) && is_digit(content[current + 1]) && is_digit(content[current + 2])) {
+                                char *octal = str_sub(content, current, 3);
+                                toinsert = (int) strtol(octal, NULL, 8);
+                                free(octal);
+                                current += 3;
+                            } else if (content[current] == 'x' && is_hex(content[current + 1]) && is_hex(content[current + 2])) {
+                                current++;
+                                char *hex = str_sub(content, current, 2);
+                                toinsert = (int) strtol(hex, NULL, 16);
+                                free(hex);
+                                current += 2;
+                            } else {
+                                toinsert = ' ';
+                                current++;
+                            }
+                        }
+                    } else {
+                        toinsert = content[current++];
+                    }
+
+                    token_insert(tokens, (struct token) {
+                        .type = TOKEN_CONSTANT, 
+                        .value = int_to_str((int) toinsert),
+                        .line = line,
+                        .allocated = true,
+                    });
+                }
                     
-                if (content[++current] == '\'') current++;
+                if (content[current] == '\'') current++;
                 else goto syntax_error;
                 break;
 
             // skips
             case '\n':
-                current++;
                 line++;
-                break;
-
             case '\r':
             case '\t':
             case ' ':

@@ -23,3 +23,9 @@ Debugging with lldb:
 ```bash
 $ make debug
 ```
+
+## TODO
+
+- [x] Add support for escaped chars
+- [ ] support for arrays
+- [ ] support for strings
