@@ -1,6 +1,6 @@
 #include "helpers.h"
 #include "parser/nodes.h"
-#include "token.h"
+#include "lexer/token.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

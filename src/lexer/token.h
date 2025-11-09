@@ -2,7 +2,7 @@
 
 #include <string.h>
 #include <stdbool.h>
-#include "helpers.h"
+#include "../helpers.h"
 
 enum token_type
 {

@@ -1,5 +1,5 @@
 #pragma once
-#include "../token.h"
+#include "../lexer/token.h"
 
 enum datatype {
     DATATYPE_INT,
